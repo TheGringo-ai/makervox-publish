@@ -1,0 +1,114 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "postvox"
+version = "0.1.0"
+description = "Self-hosted social publishing for people who bring their own developer apps."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Fred Taylor" }]
+keywords = ["publishing", "tiktok", "instagram", "facebook", "social", "automation"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Internet",
+  "Typing :: Typed",
+]
+
+# ONE runtime dependency. Everything else is an extra, and importing postvox
+# must never import any of them.
+dependencies = ["requests>=2.28"]
+
+[project.optional-dependencies]
+# TOML config on Python < 3.11 (3.11+ uses the stdlib tomllib).
+toml = ["tomli>=2.0; python_version < '3.11'"]
+# YAML config is optional; JSON and TOML need nothing extra.
+yaml = ["PyYAML>=6.0"]
+gcp = ["google-cloud-secret-manager>=2.16", "google-cloud-storage>=2.10"]
+s3 = ["boto3>=1.28"]
+keyring = ["keyring>=24.0"]
+# X posts are signed with OAuth 1.0a user context, not an OAuth 2.0 bearer
+# token, so it needs a signer. Without this extra the X client is inert and says
+# so; it never raises ImportError at import time.
+x = ["requests-oauthlib>=1.3"]
+dev = [
+  "pytest>=7.4",
+  "pytest-cov>=4.1",
+  "mypy>=1.6",
+  "ruff>=0.1",
+  "tomli>=2.0; python_version < '3.11'",
+  "PyYAML>=6.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/example-org/postvox"
+Documentation = "https://github.com/example-org/postvox/tree/main/docs"
+Issues = "https://github.com/example-org/postvox/issues"
+
+[project.scripts]
+postvox = "postvox.cli.main:main"
+
+# Third parties publish providers/stagers against these groups so that postvox
+# never takes a dependency on Vault, AWS, 1Password, etc.
+[project.entry-points."postvox.credential_providers"]
+env = "postvox.credentials.env:EnvProvider"
+static = "postvox.credentials.static:StaticProvider"
+json_file = "postvox.credentials.json_file:JsonFileProvider"
+keyring = "postvox.credentials.keyring:KeyringProvider"
+gcp_secret_manager = "postvox.credentials.gcp_secret_manager:SecretManagerProvider"
+
+[project.entry-points."postvox.cover_pickers"]
+brightness_scan = "postvox.media.cover:BrightnessScanCoverPicker"
+
+[project.entry-points."postvox.token_stores"]
+file = "postvox.state.token_store:FileTokenStore"
+
+# Instagram can only PULL media by URL, so a stager is required to publish a
+# local file. There is deliberately no default: only you know where you can
+# serve a file from.
+[project.entry-points."postvox.media_stagers"]
+gcs = "postvox.platforms.meta.staging.gcs:GcsStager"
+static_dir = "postvox.platforms.meta.staging.http_dir:StaticDirStager"
+
+[project.entry-points."postvox.link_taggers"]
+noop = "postvox.text.links:NoopTagger"
+utm = "postvox.text.links:UtmTagger"
+
+# Counter stores back the pay-per-post daily cap. The JSON one is an unlocked
+# read-modify-write and is correct only for a single serialized writer; the
+# SQLite one is safe for concurrent callers. See postvox.state.counters.
+[project.entry-points."postvox.counter_stores"]
+json = "postvox.state.counters:JsonCounterStore"
+sqlite = "postvox.state.counters:SqliteCounterStore"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+postvox = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["error"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.mypy]
+python_version = "3.9"
+warn_unused_ignores = true
+disallow_untyped_defs = false

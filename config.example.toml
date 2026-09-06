@@ -1,0 +1,714 @@
+# ============================================================================
+# postvox.toml — example configuration.  EVERY VALUE BELOW IS A FAKE PLACEHOLDER.
+# ============================================================================
+# Copy to one of these (first file wins), or point POSTVOX_CONFIG at any path:
+#   ./postvox.toml
+#   $XDG_CONFIG_HOME/postvox/postvox.toml   (~/.config/postvox/postvox.toml)
+#   /etc/postvox/postvox.toml
+#
+# JSON is also read (.json), and YAML when PyYAML is installed (.yaml). TOML
+# needs nothing extra on Python 3.11+; on 3.9/3.10 install postvox[toml].
+#
+# RULE 1 — NO SECRETS IN THIS FILE. Every `*_credential` key below is the NAME
+#   of a secret, not the secret. Names are resolved by the credential provider
+#   chain (environment variables by default). This file is safe to commit; your
+#   tokens are not.
+#
+# RULE 2 — This package assumes YOU own the developer app on each platform:
+#   your own TikTok app, your own Meta app, your own X app. There is no shared
+#   app, no hosted OAuth broker, and no default pointing at anyone else's domain
+#   or cloud project. Anything postvox cannot invent for you (an OAuth redirect
+#   URI, a staging bucket) has NO default and raises ConfigError if used unset.
+#
+# RULE 3 — Anything spelled `impl` is a plugin: "module.path:Callable" plus an
+#   `options` table passed to its constructor. That is how callables (UTM
+#   taggers, cover pickers, identity parsers, state backends) are injected from
+#   this file. Library callers pass real Python objects to Config(...) instead.
+#
+# Any POSTVOX_-prefixed environment variable overlays this file:
+#   POSTVOX_PLATFORMS__X__GOVERNOR__DAILY_CAP=2
+# ----------------------------------------------------------------------------
+
+version = 1                       # config schema version. Bumps are breaking.
+
+
+# ============================================================================
+# state — every file this package writes lives under one root
+# ============================================================================
+[state]
+dir = "~/.local/state/postvox"    # one root; every path below defaults under it
+dir_mode = 0o700                  # created dirs (tokens are secrets)
+file_mode = 0o600                 # token/state files, owner-only
+# Set false on filesystems with no POSIX modes (SMB/FAT/Windows). When false
+# postvox logs ONE warning that credentials are stored without owner-only
+# permissions, rather than silently degrading.
+enforce_file_mode = true
+
+# Advisory locks, serializing publishes and token refreshes across processes.
+[state.locks]
+backend = "auto"                  # auto | fcntl | msvcrt | none
+#   auto -> fcntl on POSIX, msvcrt on Windows
+#   none -> NO locking. Must be chosen explicitly; postvox refuses to run
+#           unlocked by accident, because an unlocked TikTok refresh SPENDS a
+#           refresh token that cannot be recovered.
+dir = "~/.local/state/postvox/locks"
+acquire_timeout_s = 120
+on_unavailable = "proceed"        # proceed | fail
+#   proceed = never drop a post over a lock file (the original behaviour)
+#   fail    = safer on multi-machine deployments. Both log at WARNING.
+
+
+# ============================================================================
+# credentials — providers are tried in order; first non-empty value wins.
+# Delete this whole block and you get exactly [env], which needs no config.
+# ============================================================================
+[[credentials.providers]]
+impl = "postvox.credentials.env:EnvProvider"
+options = { prefix = "" }         # e.g. "POSTVOX_" to namespace your env vars
+
+# Optional: a flat JSON (or .env) file of NAME -> value. Refuses to load a file
+# that is group- or world-readable unless allow_insecure_mode is set.
+[[credentials.providers]]
+impl = "postvox.credentials.json_file:JsonFileProvider"
+options = { path = "~/.config/postvox/secrets.json", required = false }
+# required = false -> a missing file simply skips this provider.
+
+# Optional extra: pip install "postvox[gcp]" — or leave use_cli true to shell
+# out to `gcloud` rather than adding the dependency. NOT a default, and there
+# is NO default project id.
+# [[credentials.providers]]
+# impl = "postvox.credentials.gcp_secret_manager:SecretManagerProvider"
+# options = { project = "my-gcp-project-123", use_cli = false, probe_existence = true }
+#   probe_existence -> ONE `secrets list` call populates existence checks, so a
+#   handful of absent keys does not become a per-key subprocess storm.
+
+# Optional extra: pip install "postvox[keyring]"
+# [[credentials.providers]]
+# impl = "postvox.credentials.keyring:KeyringProvider"
+# options = { service = "postvox" }
+
+[credentials]
+cache_ttl_s = 300                 # in-process cache of resolved values
+redact_in_logs = true             # resolved secrets are scrubbed from log records
+
+
+# ============================================================================
+# logging — this package NEVER print()s. It logs.
+# ============================================================================
+[logging]
+logger_name = "postvox"
+level = "INFO"
+# Deliberate exception-swallows (cover art, thumbnail, transcode fallback,
+# staged-object cleanup, insights) each log at this level WITH the reason. A
+# silent swallow is how an ffmpeg failure becomes the exact upload rejection
+# the transcode existed to prevent.
+swallowed_error_level = "WARNING"
+provider_error_body_chars = 400   # how much of an API error body to surface
+configure_root = false            # library default: do not touch root logging
+
+
+# ============================================================================
+# media — external binaries and encode recipes
+# ============================================================================
+[media]
+ffmpeg_path = "ffmpeg"            # resolved via shutil.which(); absolute path OK
+ffprobe_path = "ffprobe"
+# If a binary is missing, the features that need it are DISABLED with one
+# warning at startup rather than failing mid-publish.
+require_ffmpeg = false
+
+# Cover-frame picker. Lives here, not under [platforms.instagram], because BOTH
+# Meta publishers need it — that shared need is what created the original
+# circular import between them.
+[media.cover]
+enabled = true
+impl = "postvox.media.cover:BrightnessScanCoverPicker"
+
+[media.cover.options]
+# Calibrated on reels that fade IN from black — frame 0 is literally brightness
+# 0.0, which is why an untreated grid renders as black tiles. On footage that
+# opens bright these are harmless but not meaningful; tune them or set
+# enabled = false. Measured reference on a fade-in clip: t=0 -> 0.0, t=0.5 -> 63.2.
+scan_until_s = 6.0                # how far into the clip to scan
+step_s = 0.25                     # sampling interval
+brightness_floor = 10.0           # "past the fade, real content" threshold
+min_offset_s = 0.75               # never pick a cover before this
+fallback_floor = 5.0              # legitimately dark art: anything clearly
+                                  # above black beats the platform's frame 0
+take_first_qualifying = true      # first good frame, not the brightest — the
+                                  # cover should match the opening beat
+
+# Short hook-forward cut used for one platform without touching the master.
+[media.short_cut]
+enabled = true
+seconds = 15
+fade_s = 0.6
+skip_if_duration_under_s = 17     # = seconds + 2; short clips pass through
+encoder_args = ["-c:v", "libx264", "-preset", "veryfast", "-pix_fmt", "yuv420p",
+                "-c:a", "aac", "-movflags", "+faststart"]
+timeout_s = 300
+
+# Pre-upload downscale when a file exceeds a platform's practical byte ceiling.
+[media.transcode]
+enabled = true
+encoder_args = ["-c:v", "libx264", "-crf", "24", "-maxrate", "9M",
+                "-bufsize", "18M", "-preset", "veryfast",
+                "-c:a", "aac", "-movflags", "+faststart"]
+timeout_s = 900
+# If the transcode fails, do NOT quietly hand back the oversized original —
+# that reproduces the upload rejection this exists to prevent.
+on_failure = "raise"              # raise | use_original (both log at ERROR)
+
+
+# ============================================================================
+# http — one timeout/retry policy, per operation class
+# ============================================================================
+[http]
+user_agent = "postvox/0.1 (+https://github.com/example-org/postvox)"
+
+[http.timeouts_s]
+default = 30
+auth = 60                         # token exchange / refresh
+small_write = 60                  # create container, comment, metadata
+media_create = 120
+poll = 30
+upload_chunk = 600                # resumable chunk PUT — deliberately generous
+insights = 60
+
+[http.retry]
+# ONLY transport-level failures retry (connect/read timeouts, DNS, reset).
+# API REJECTIONS ARE NEVER RETRIED — retrying a spam or rate rejection makes it
+# worse and, on X, costs money per attempt.
+attempts = 3
+backoff_s = 3                     # linear: backoff_s * attempt
+retry_on = ["transport"]          # transport | 5xx | 429  (add at your own risk)
+
+
+# ============================================================================
+# identity — "is this the same post I already sent?"
+# ============================================================================
+# A FILENAME IS NOT AN IDENTITY. A scheduler that renders the same content type
+# twice in one day overwrites the first file, so two genuinely different videos
+# share one name. Dedupe on (account, date, key, slot, CONTENT HASH) instead.
+[identity]
+impl = "postvox.identity.post_id:FilenamePostIdentity"
+on_unresolved = "warn_and_publish"   # warn_and_publish | refuse | publish
+# No date in the filename, an unreadable file, or a pre-fingerprint ledger row
+# all mean "cannot prove this is the same post". The default fails OPEN (a rare
+# duplicate beats silently suppressing a real post) but SAYS SO at WARNING.
+
+[identity.options]
+# Preset grammar: "<key>_<YYYY-MM-DD>[__s<N>].<ext>"
+#   moonlit_2031-04-09.mp4       -> key=moonlit  date=2031-04-09  slot=1
+#   moonlit_2031-04-09__s2.mp4   -> key=moonlit  date=2031-04-09  slot=2
+date_pattern = '(\d{4}-\d{2}-\d{2})'
+# The slot marker is stripped FIRST so both slots report the same `key` and
+# collapse onto one creative in reporting. A double-underscore sentinel cannot
+# be confused with a real suffix (_scorpio, _prayer).
+slot_pattern = '__s(\d+)(?=\.[^.]*$|$)'
+default_slot = 1                  # unmarked files are slot 1 (back-compat)
+
+[identity.fingerprint]
+algorithm = "sha256"
+hex_chars = 16                    # FROZEN. Changing this orphans every ledger row.
+# Hash the SOURCE media, never the derived/temp file that goes over the wire:
+# one code path may upload a 15s cut while a recovery path uploads the full
+# clip, and hashing the wire bytes would never match across the two.
+hash_source_media = true
+
+
+# ============================================================================
+# ledger — append-only delivery record. PUBLIC API, not an internal file.
+# ============================================================================
+[ledger]
+impl = "postvox.state.ledger:JsonlLedger"
+options = { path = "~/.local/state/postvox/delivered.jsonl" }
+schema_version = 2                # v1 rows (no `sha`, no `slot`) are tolerated
+                                  # and treated as "identity unknown"
+# Shipped alternative for multi-process/serverless hosts:
+#   impl = "postvox.state.ledger:SqliteLedger"
+#   options = { path = "~/.local/state/postvox/postvox.db" }
+
+
+# ============================================================================
+# links & UTM — shared by every platform
+# ============================================================================
+[links.tagger]
+# The default is a NO-OP. A tagger hardcoded to one domain ships every other
+# brand's links untagged with no error at all, and a silent no-op is worse than
+# an obvious gap. Swap in UtmTagger and name your own domains:
+impl = "postvox.text.links:UtmTagger"
+
+[links.tagger.options]
+# Only URLs on these hosts get tagged. An empty list tags nothing.
+domains = ["moonlit.example", "www.moonlit.example"]
+match_scheme_less = false         # also rewrite bare "moonlit.example/x"
+
+[links.tagger.options.params]
+utm_source = "{platform}"         # {platform} {medium} {account} {date} expand
+utm_medium = "{medium}"
+utm_campaign = "{account}_{date}"
+
+[links.strip]
+# Some platforms throttle reach on posts with in-body links. When a publisher
+# strips them, the link-bearing lines leave the DESCRIPTION and the CTA is
+# posted as the first comment instead.
+#
+# A hand-tuned TLD list is a trap: an unlisted TLD passes through unstripped.
+# Prefer "any_dot_tld" unless you have a reason.
+mode = "any_dot_tld"              # urls_only | any_dot_tld | tld_allowlist
+tld_allowlist = ["live", "com", "net", "org", "io", "app", "co", "me", "ai", "dev"]
+keep_hashtags = true              # "#moonlit" is not a link
+collapse_blank_lines = true
+
+
+# ============================================================================
+# accounts — one entry per brand/persona you publish as
+# ============================================================================
+# The key is YOUR label. Nothing is special-cased on it, and no account name is
+# baked into this package.
+[accounts.moonlit]
+display_name = "Moonlit Example"
+# CTA text posted as the first comment where in-body links suppress reach.
+# postvox ships no marketing copy: if you want one, write it here.
+first_comment = "Full write-up, free -> https://moonlit.example"
+link_url = "https://moonlit.example"
+platforms = ["tiktok", "facebook", "instagram", "x"]
+
+[accounts.moonlit.facebook]
+page_id = "100000000000001"       # fake
+
+[accounts.moonlit.instagram]
+# Omit to resolve the IG business account from the linked Facebook Page.
+# ig_user_id = "17000000000000000"
+
+[accounts.moonlit.tiktok]
+# Per-account override of the global scope string. SCOPES ARE FROZEN AT
+# AUTHORIZATION — changing this does nothing until this account re-authorizes.
+scopes = "user.info.basic,user.info.stats,video.upload,video.publish,video.list"
+
+[accounts.dailyverse]
+display_name = "Daily Verse Example"
+first_comment = "Follow for a daily note."
+platforms = ["tiktok", "facebook"]
+
+[accounts.dailyverse.facebook]
+page_id = "100000000000002"       # fake
+
+[accounts.dailyverse.tiktok]
+scopes = "user.info.basic,video.upload"
+# This account uploads to the app inbox and a human taps publish; the automated
+# path is off for it.
+auto_publish = false
+
+
+# ============================================================================
+# platforms.tiktok — Content Posting API
+# ============================================================================
+[platforms.tiktok]
+enabled = true
+client_key_credential = "TIKTOK_CLIENT_KEY"
+client_secret_credential = "TIKTOK_CLIENT_SECRET"
+
+# REQUIRED. No default. It must match a redirect URI registered on YOUR TikTok
+# app. `postvox auth tiktok <account>` runs a local loopback listener, so you do
+# not need to own a domain — register the loopback URL on your app and use it.
+redirect_uri = "http://127.0.0.1:8722/tiktok/callback"
+
+# Default scope string for every account (override per account above).
+# SCOPES ARE FIXED AT AUTHORIZATION. Refreshing a token does NOT add them.
+# `user.info.basic` returns IDENTITY ONLY — asking it for follower_count is an
+# ERROR, not a null field. Follower stats need `user.info.stats`; per-post
+# metrics need `video.list`.
+scopes = "user.info.basic,user.info.stats,video.upload,video.publish,video.list"
+
+api_base = "https://open.tiktokapis.com/v2"
+auth_base = "https://www.tiktok.com/v2/auth/authorize/"
+
+[platforms.tiktok.tokens]
+store = "tiktok_tokens"           # see [token_stores] below
+cache_ttl_s = 60                  # the token is read on EVERY request; an
+                                  # uncached remote read adds ~1s to each call
+expiry_skew_s = 60                # margin against clock skew / in-flight requests
+refresh_lock = "tiktok-refresh"   # lock name under state.locks.dir
+# TikTok ROTATES THE REFRESH TOKEN ON USE: a successful refresh SPENDS the old
+# one, so two concurrent refreshes race destructively and the loser needs a
+# manual re-auth. Three defences, all on by default:
+lock_refresh = true               # 1. serialize refreshes on this host
+reread_inside_lock = true         # 2. if the lock holder already refreshed,
+                                  #    adopt THEIR token instead of spending
+                                  #    ours — this is what makes the lock worth
+                                  #    having
+adopt_remote_on_reject = true     # 3. cross-machine fallback: on rejection,
+                                  #    re-read the shared store once and adopt a
+                                  #    token another host just rotated, rather
+                                  #    than failing the post
+
+[platforms.tiktok.upload]
+max_chunk_bytes = 20971520        # 20 MiB. TikTok's documented per-chunk ceiling
+                                  # is 64 MiB; 20 MiB is an EMPIRICAL reliability
+                                  # setting. Both numbers are real; do not
+                                  # "correct" one from the other.
+# Chunk-count arithmetic is NOT ceil-based: total_chunk_count must equal
+# floor(size / chunk_size) and the LAST chunk absorbs the remainder. Ceil-based
+# math returns "invalid chunk count" on files over the ceiling. (Enforced in
+# code; stated here so nobody re-derives it wrongly.)
+max_video_bytes = 62914560        # 60 MiB — transcode before upload above this.
+                                  # Larger reels 403 with "invalid request id".
+accepted_statuses = [200, 201, 206]   # 206 IS success, not failure
+caption_max_chars = 2200
+
+[platforms.tiktok.publish]
+# "inbox"  = upload lands in the app's inbox and waits for a human tap
+# "direct" = direct post; requires an AUDITED app, and an unaudited app is
+#            restricted to SELF_ONLY on a private account regardless.
+mode = "inbox"
+# privacy_level MUST come from the creator's own privacy_level_options and MUST
+# be chosen by a human — the API forbids a pre-selected default. The
+# creator_info probe that supplies those options is NEVER CACHED, because a
+# creator can flip to private at any moment.
+creator_info_cache_s = 0          # 0 = never cache. Do not raise this.
+# Branded (third-party) content may not be posted privately — that combination
+# is refused locally instead of after a full upload.
+refuse_branded_private = true
+# Deployment-wide override list. DEFAULT IS EMPTY: the code this was extracted
+# from shipped two real account names here.
+auto_publish_disabled_accounts = []
+
+[platforms.tiktok.publish.confirm]
+# An automated pending-share queue is self-limiting: the inbox caps out at
+# roughly 5 pending shares, so 5 uploads/day hits
+# `spam_risk_too_many_pending_share`. Keep the daily upload count under it.
+attempts = 6
+delay_s = 4
+# Poll until SEND_TO_USER_INBOX / PUBLISH_COMPLETE (ok) or FAILED / EXPIRED
+# (not ok). Still PROCESSING after the budget is treated as accepted rather
+# than reported as a failure.
+processing_is_accepted = true
+
+[platforms.tiktok.metrics]
+list_page_size = 20               # the API caps video/list max_count at 20
+max_videos = 400                  # stop paging so a large account cannot loop
+
+[platforms.tiktok.metrics.follower_log]
+enabled = false                   # opt-in; writes nothing by default
+path = "~/.local/state/postvox/tiktok_followers.csv"
+# One row per UTC day, never two: a job that runs twice would otherwise turn a
+# flat day into a fake datapoint when the series is plotted.
+one_row_per_day = true
+
+
+# ============================================================================
+# platforms.facebook — Graph API Page publishing
+# ============================================================================
+[platforms.facebook]
+enabled = true
+app_id_credential = "META_APP_ID"
+app_secret_credential = "META_APP_SECRET"
+
+# ONE key drives both hosts; they must stay in lockstep.
+api_version = "v21.0"
+graph_base = "https://graph.facebook.com"
+rupload_base = "https://rupload.facebook.com/video-upload"
+
+# Required permissions on the Page token, by feature:
+#   pages_show_list, pages_read_engagement, pages_manage_posts -> posting
+#   pages_manage_metadata                                      -> about/cover
+#   pages_manage_engagement                                    -> comments
+#   read_insights                                              -> reel plays
+# A missing pages_manage_engagement returns "(#200) insufficient permissions"
+# on the COMMENT only; the post itself still succeeds.
+[platforms.facebook.tokens]
+store = "meta_tokens"             # SHARED with instagram (see [token_stores])
+
+[platforms.facebook.reels]
+# The 3-phase resumable upload mints ONE video_id per reel and every retry
+# re-uses it. That is the whole duplicate-prevention story: retrying the OUTER
+# function re-runs `start`, mints a NEW video_id, and a network drop after the
+# platform already committed produces a SECOND reel.
+upload_retries = 3
+upload_backoff_s = 3
+# Re-finishing an already-committed video returns the existing post or an
+# "already published" error, which is tolerated rather than treated as failure.
+tolerate_already_published = true
+# Reels have no impressions/reach metric in this API version; plays are the
+# proxy and come from insights, not the `views` field.
+insight_metrics = ["blue_reels_play_count", "fb_reels_total_plays"]
+# This platform accepts a new preferred thumbnail on an EXISTING video (unlike
+# Instagram, where the cover is settable only at publish time), so this runs
+# after publishing and never blocks it. Without it, an auto-picked dark frame
+# becomes the "preferred" thumbnail and the Page renders as black tiles.
+set_cover_after_publish = true
+strip_links_from_description = true   # see [links.strip]
+# Post the media.short_cut output instead of the master (shorter = higher
+# completion = more reach on a cold Page). The LEDGER still records the SOURCE
+# file, not the temp cut.
+use_short_cut = true
+
+[platforms.facebook.reels.first_comment]
+enabled = true
+# ONE comment carries the readable body AND the single tagged CTA link, so
+# there is no near-duplicate text post sitting next to the reel.
+include_body = true
+utm_medium = "reel"
+# The story object EXISTS before it will accept comments: the comment target id
+# resolves almost immediately but POSTing to it right then returns "(#100)
+# Unsupported post request". Resolving the id is NOT enough — the POST itself
+# must be retried.
+target_resolve_attempts = 5
+target_resolve_backoff_s = 3
+post_attempts = 5
+post_backoff_s = 5                # 5+10+15+20 = 50s, covers the observed lag
+
+[platforms.facebook.dedupe]
+# The per-account publish lock only SERIALIZES concurrent callers; it does NOT
+# deduplicate. Caller #2 waits for #1 and then publishes the same reel again.
+# The delivery re-check therefore happens INSIDE the lock — any check made
+# before acquiring it is a TOCTOU whose snapshot goes stale while blocked.
+check_inside_lock = true
+# A duplicate does not just waste an upload: near-duplicate uploads get
+# reach-suppressed, so it burns the slot.
+duplicate_result_is_ok = true     # a suppressed duplicate returns ok=true — the
+                                  # post IS on the Page, which is what both
+                                  # callers were asking for
+
+
+# ============================================================================
+# platforms.instagram — Reels/photos via the linked Facebook Page
+# ============================================================================
+[platforms.instagram]
+enabled = true
+# PRIMARY path: a Professional IG account linked to a Facebook Page is published
+# via graph.facebook.com/{ig-user-id} using the PAGE token — no separate
+# Instagram-login token to mint. Needs instagram_content_publish (+
+# instagram_basic) on the Page token. This sidesteps Instagram-login OAuth.
+auth_path = "facebook_page"       # facebook_page | instagram_login
+api_version = "v21.0"             # inherits facebook.api_version when unset
+graph_base = "https://graph.facebook.com"
+instagram_graph_base = "https://graph.instagram.com"   # legacy login path
+
+[platforms.instagram.tokens]
+store = "meta_tokens"             # SAME store as facebook — one file, one lock
+# Long-lived Instagram-login tokens last 60d; refresh past 50d. That refresh
+# needs no app secret; the initial short->long exchange does.
+refresh_after_s = 4320000
+
+# Instagram PULLS media by URL — you cannot upload bytes. Local files must be
+# staged somewhere the platform can fetch, then removed.
+[platforms.instagram.staging]
+impl = "postvox.platforms.meta.staging.gcs:GcsStager"
+
+[platforms.instagram.staging.options]
+bucket = "example-media-staging"  # REQUIRED. No default.
+# project = "my-gcp-project-123"  # omit to infer from application default creds
+prefix = "postvox-temp"
+# PRECONDITION: per-object public ACLs require UNIFORM BUCKET-LEVEL ACCESS to be
+# DISABLED on the bucket. Modern buckets have it ENABLED by default, in which
+# case making an object public raises. The stager detects this and raises a
+# named StagingPreconditionError explaining it, rather than a raw 403.
+public_mode = "object_acl"        # object_acl | signed_url
+signed_url_ttl_s = 3600           # used when public_mode = "signed_url"
+# Without an explicit chunk size the client does a SINGLE-SHOT upload and the
+# default timeout covers the WHOLE transfer, so a ~30MB file on a slow uplink
+# dies part-way. Setting it switches to a RESUMABLE upload where the timeout is
+# PER CHUNK.
+chunk_bytes = 8388608             # 8 MiB — must be a multiple of 256 KiB
+upload_timeout_s = 300            # per chunk
+upload_retry = true               # safe: the object name is deterministic and
+                                  # the object is deleted after publishing
+delete_after_publish = true
+# A staged object that fails to delete stays PUBLICLY READABLE. That is logged
+# at ERROR with the full URI, not swallowed.
+#
+# Shipped alternatives:
+#   postvox.platforms.meta.staging.s3:S3Stager          (S3 / R2, presigned)
+#   postvox.platforms.meta.staging.http_dir:StaticDirStager (any web root)
+
+[platforms.instagram.publish]
+poll_attempts = 30                # reels MUST reach FINISHED before publish
+poll_interval_s = 6               # 30 x 6s = 3 minutes
+media_type_from_extension = [".mp4", ".mov"]   # query string stripped first
+send_thumb_offset = true          # milliseconds, from [media.cover]
+# PRODUCT LIMIT, not a bug: the publishing API CANNOT attach a trending sound
+# (in-app only). Treat automated IG posting as a safety net so the account is
+# never dark, and hand-post hero content when reach matters.
+
+
+# ============================================================================
+# platforms.x — API v2, with a deliberately conservative posting governor
+# ============================================================================
+[platforms.x]
+enabled = true
+# OAuth 1.0a USER CONTEXT (not an OAuth 2.0 bearer). The app must be Read+Write
+# and the access token REGENERATED AFTER setting those permissions.
+api_key_credential = "X_API_KEY"
+api_secret_credential = "X_API_SECRET"
+access_token_credential = "X_ACCESS_TOKEN"
+access_secret_credential = "X_ACCESS_SECRET"
+# Inert until all four resolve: the client returns (false, reason) and posts
+# nothing, so wiring this in before setup is a silent no-op, not a crash.
+
+api_base = "https://api.twitter.com/2"
+# Media upload is still the LEGACY v1.1 host — a real mixed-generation quirk,
+# not a typo.
+media_upload_url = "https://upload.twitter.com/1.1/media/upload.json"
+
+[platforms.x.governor]
+# Suppression is ONE-WAY: an account that behaves like a marketing bot gets
+# suppressed, and posting more cannot undo it. Every rule here trades reach per
+# post for the account staying visible at all.
+#
+# ONE post per ACCOUNT per day. Not per brand: one set of credentials is one
+# account, and a per-brand counter lets two brands each spend their own "1 per
+# day" onto the same account — doubling both cadence and bill while every check
+# still reads green.
+daily_cap = 1
+timezone = "UTC"                  # when the day rolls over
+recent_keep = 30                  # fingerprints kept for near-duplicate checks
+# Fingerprints are lowercased alphanumerics only, so emoji/punctuation churn
+# cannot make two near-identical posts look distinct.
+
+# ALLOW-LIST, never a deny-list. EMPTY = DENY ALL. A generic package that
+# defaulted to allow-all would invert the safety property this exists for.
+enabled_accounts = ["moonlit"]
+
+# Content-kind allow-list, with a deliberate asymmetry:
+#   listed slug        -> allowed
+#   unlisted slug      -> DENIED
+#   missing/empty slug -> ALLOWED (some callers never pass one, and refusing on
+#                         missing metadata silently stops posting — the hardest
+#                         failure to notice)
+# An empty list means no slug filtering at all.
+allowed_slugs = ["howto", "explainer", "reference", "definition"]
+
+[platforms.x.governor.state]
+impl = "postvox.state.counters:JsonCounterStore"
+options = { path = "~/.local/state/postvox/x_governor.json" }
+# The JSON store is an UNLOCKED read-modify-write, correct only when callers are
+# serialized on one machine. Two concurrent callers lose a count and double-post
+# — at real money per post. For threads, workers, containers or serverless use:
+#   impl = "postvox.state.counters:SqliteCounterStore"
+
+[platforms.x.shape]
+max_chars = 280
+truncate_to = 277                 # max_chars - 3, room for the ellipsis
+min_sentence_boundary = 180       # prefer cutting at a sentence past this point
+min_body_chars = 20               # refuse to post a stub
+max_hashtags = 2                  # a hashtag wall is a spam signal here, unlike
+                                  # platforms where five is normal
+strip_urls = true
+# ORDER IS LOAD-BEARING: hashtags are removed BEFORE the dangling-CTA sweep.
+# Captions put tags after the link, so with tags still present the leftover
+# "Full write-up at" sits mid-string and the anchored pattern never fires — and
+# the bug still passes any test that only inspects the final string, because
+# that ends in hashtags either way.
+#
+# A SET, not a growing regex: the failure mode is a phrasing nobody anticipated,
+# and adding a word is the whole fix. English-only — override for other locales.
+#
+# ⚠️ This is the DEFAULT list, reproduced in full. Every word is here because a
+# real caption ended in it once the URL was removed. Trimming it to the obvious
+# prepositions leaves "Full reading" hanging off the end of a post — the exact
+# defect the sweep exists to prevent — so shorten it only on purpose. Delete the
+# key entirely to inherit the default.
+trailing_connectors = ["at", "to", "on", "in", "via", "here", "now", "up", "is",
+                       "the", "link", "bio", "more", "read", "reading", "full",
+                       "story", "details", "detail", "see", "check", "it", "out",
+                       "below"]
+
+[platforms.x.link_reply]
+# A post CONTAINING A URL is billed at a different, much higher rate, so the
+# link normally lives in the PROFILE BIO instead. Cost of that choice: bio
+# traffic arrives as one bucket instead of per-post UTM attribution.
+enabled = false
+template = "{cta} -> {url}"
+cta = "Full write-up, free"
+utm_medium = "social"
+
+[platforms.x.pricing]
+# Used ONLY by `postvox estimate` / dry-run output. Point-in-time figures —
+# VERIFY on the current pricing page before trusting them. A dry run that
+# misstates the expensive branch is worse than no dry run.
+price_per_post = 0.015
+price_per_post_with_url = 0.200
+currency = "USD"
+verified_on = "2031-01-01"
+
+[platforms.x.media]
+# Stills only. Video needs chunked INIT/APPEND/FINALIZE plus status polling and
+# is not implemented. An image is a BONUS, never a blocker: a failed upload must
+# still let the text post go out.
+image_upload_enabled = true
+image_failure_blocks_post = false
+
+
+# ============================================================================
+# token_stores — named, shared, pluggable credential stores
+# ============================================================================
+# Referenced by platforms.*.tokens.store. Two platforms sharing one store
+# (facebook + instagram) share one file AND one lock, which is what stops a
+# read-modify-write race from losing a freshly refreshed token.
+[token_stores.meta_tokens]
+impl = "postvox.state.token_store:FileTokenStore"
+
+[token_stores.meta_tokens.options]
+path = "~/.local/state/postvox/meta_tokens.json"
+# Schema: {"pages": {<page_id>: {...}}, "accounts": {<name>: <page_id>},
+#          "instagram": {<name>: {...}}}
+atomic_write = true               # write temp + os.replace, never truncate-in-place
+lock = "meta-tokens"
+
+[token_stores.tiktok_tokens]
+# The DEFAULT for a fresh install is a plain local file. The code this was
+# extracted from defaulted to a cloud secret backend, so every call on a machine
+# without that CLI paid a ~1s failed subprocess before falling back.
+impl = "postvox.state.token_store:FileTokenStore"
+
+[token_stores.tiktok_tokens.options]
+path = "~/.local/state/postvox/tiktok_tokens.json"
+atomic_write = true
+lock = "tiktok-tokens"
+
+# OPT-IN multi-machine setup: a remote store as the source of truth with the
+# local file as cache and offline fallback. Replace the block above with:
+#
+# [token_stores.tiktok_tokens]
+# impl = "postvox.state.token_store:MirroredTokenStore"
+#
+# [token_stores.tiktok_tokens.options.local]
+# impl = "postvox.state.token_store:FileTokenStore"
+# options = { path = "~/.local/state/postvox/tiktok_tokens.json", lock = "tiktok-tokens" }
+#
+# [token_stores.tiktok_tokens.options.remote]
+# impl = "postvox.state.token_store:SecretManagerTokenStore"
+# options = { project = "my-gcp-project-123", secret_id = "POSTVOX_TIKTOK_TOKENS", keep_versions = 3 }
+#
+# WRITE ORDER MATTERS AND IS NOT CONFIGURABLE: local first, then remote. A
+# freshly rotated refresh token is UNRECOVERABLE if lost (the old one is already
+# spent), so it lands on disk before anything that can time out, and the mirror
+# write NEVER raises. Secret Manager bills per ENABLED VERSION per month and a
+# daily-rotating token is ~365 paid versions a year for one file, so keep a few
+# for rollback and destroy the rest — pruning is housekeeping and never fails a
+# write. Offline fallback is LOAD-BEARING: a scheduled publish must not die
+# because a remote secret read timed out.
+
+
+# ============================================================================
+# cli
+# ============================================================================
+[cli]
+# Interpolated into every "run: <prog> auth <account>" hint. Defaults to
+# argv[0], so a wrapper script's own name appears in its own error messages.
+program_name = "postvox"
+
+[cli.auth_listener]
+# Local loopback OAuth helper, so self-hosters do not need to own a domain.
+host = "127.0.0.1"
+port = 8722
+# CROSS-ACCOUNT AUTH TRAP: platforms issue a token for whichever account the
+# BROWSER was signed into, not the one named on the command line. Authorizing
+# "dailyverse" while signed in as "moonlit" silently saves moonlit's credentials
+# under the dailyverse key — every later post then lands on the wrong account,
+# and both share one pending-share quota. The save is REFUSED when the returned
+# account id already belongs to a different local account name.
+refuse_identity_clash = true

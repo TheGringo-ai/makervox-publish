@@ -1,0 +1,129 @@
+# ---------------------------------------------------------------------------
+# Secrets, tokens and state.  These rules come FIRST and are deliberately
+# broad: postvox.yaml is designed to be safe to commit (it holds secret NAMES,
+# never values), but a real deployment's config is still not yours to publish,
+# and one accidental `git add -A` of a token file spends credentials that
+# cannot always be revoked.
+# ---------------------------------------------------------------------------
+postvox.yaml
+postvox.yml
+postvox.toml
+postvox.json
+*.local.toml
+*.local.yaml
+*.local.json
+
+# ...but the shipped, all-fake example must stay tracked.
+!config.example.toml
+!examples/postvox.yaml
+!examples/*.example.*
+
+# Credential files
+.env
+.env.*
+!.env.example
+secrets.json
+secrets.toml
+credentials.json
+client_secret*.json
+service-account*.json
+*service_account*.json
+*.pem
+*.p8
+*.p12
+*.key
+!public*.key
+
+# Token stores / OAuth artifacts (any name, any location)
+*token*.json
+*tokens*.json
+/.postvox/
+/state/
+/.state/
+# NOTE: these are ANCHORED with a leading slash on purpose. A bare
+# `state/` would also ignore src/postvox/state/, the package's own state
+# backends — an ignored source directory is a very quiet way to lose code.
+
+# Runtime state written by postvox
+/delivered.jsonl
+*_governor.json
+*_followers.csv
+/postvox.db
+postvox.db-journal
+postvox.db-wal
+postvox.db-shm
+/locks/
+*.lock
+
+# ---------------------------------------------------------------------------
+# Python
+# ---------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+/build/
+develop-eggs/
+/dist/
+downloads/
+eggs/
+.eggs/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Environments
+.venv/
+venv/
+env/
+ENV/
+.python-version
+
+# Test / typing / lint caches
+.pytest_cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.ruff_cache/
+.tox/
+.nox/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+*.cover
+
+# Packaging / docs builds
+docs/_build/
+site/
+pip-wheel-metadata/
+
+# ---------------------------------------------------------------------------
+# Editors / OS
+# ---------------------------------------------------------------------------
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Test fixtures are fake by construction (that is the point of a fixture) and
+# must stay tracked even when their names look like the real thing.
+!tests/fixtures/
+!tests/fixtures/**
+
+# Scratch media used while testing publishers
+/tmp/
+/scratch/
+*.mp4
+*.mov
+!tests/fixtures/*.mp4
