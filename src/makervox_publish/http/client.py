@@ -34,7 +34,7 @@ from typing import Any, Dict, Optional, Tuple
 
 import requests
 
-from makervox_publish.errors import PostvoxError
+from makervox_publish.errors import MakervoxPublishError
 from makervox_publish.logging import get_logger
 
 __all__ = ["HttpPolicy", "HttpClient", "TransportError"]
@@ -47,7 +47,7 @@ _TIMEOUT_KINDS = (
 )
 
 
-class TransportError(PostvoxError):
+class TransportError(MakervoxPublishError):
     """The request never produced an HTTP response.
 
     Distinct from an API rejection on purpose: this one is safe to retry and an

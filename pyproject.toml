@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "makervox-publish"
-version = "0.1.0"
+version = "0.1.1"
 description = "Self-hosted social publishing for people who bring their own developer apps."
 readme = "README.md"
 requires-python = ">=3.9"

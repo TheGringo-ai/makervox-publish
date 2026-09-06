@@ -11,7 +11,7 @@ from __future__ import annotations
 from typing import Optional, Sequence
 
 __all__ = [
-    "PostvoxError",
+    "MakervoxPublishError",
     "ConfigError",
     "PluginError",
     "MediaError",
@@ -28,14 +28,14 @@ __all__ = [
 ]
 
 
-class PostvoxError(Exception):
+class MakervoxPublishError(Exception):
     """Base class for everything this package raises deliberately."""
 
 
 # --------------------------------------------------------------------------- #
 # configuration
 # --------------------------------------------------------------------------- #
-class ConfigError(PostvoxError):
+class ConfigError(MakervoxPublishError):
     """A config value is missing, of the wrong type, or self-contradictory.
 
     Always names the offending key path, because "invalid config" without a key
@@ -61,7 +61,7 @@ class PluginError(ConfigError):
 # --------------------------------------------------------------------------- #
 # media
 # --------------------------------------------------------------------------- #
-class MediaError(PostvoxError):
+class MediaError(MakervoxPublishError):
     """Something went wrong inspecting or re-encoding a media file."""
 
 
@@ -100,11 +100,11 @@ class FfmpegFailed(MediaError):
 # --------------------------------------------------------------------------- #
 # publishing
 # --------------------------------------------------------------------------- #
-class PublishError(PostvoxError):
+class PublishError(MakervoxPublishError):
     """A publish attempt failed for a reason the caller cannot fix by retrying."""
 
 
-class NotConfigured(PostvoxError):
+class NotConfigured(MakervoxPublishError):
     """A platform was asked to publish before its credentials were supplied.
 
     Publishers normally return ``(False, reason)`` instead of raising this, so
@@ -124,7 +124,7 @@ class NotConfigured(PostvoxError):
         self.setup = setup
 
 
-class DuplicatePost(PostvoxError):
+class DuplicatePost(MakervoxPublishError):
     """This exact content was already delivered for this account/date/key.
 
     Note that the normal publish path does NOT raise this: a detected duplicate
@@ -133,7 +133,7 @@ class DuplicatePost(PostvoxError):
     """
 
 
-class StagingPreconditionError(PostvoxError):
+class StagingPreconditionError(MakervoxPublishError):
     """The staging bucket/host cannot serve a publicly fetchable URL.
 
     The common case: uniform bucket-level access is ENABLED (the default on
@@ -142,7 +142,7 @@ class StagingPreconditionError(PostvoxError):
     """
 
 
-class TokenRotationError(PostvoxError):
+class TokenRotationError(MakervoxPublishError):
     """A refresh token was spent and the new one could not be persisted.
 
     This is the unrecoverable case: the old refresh token is already dead. The
@@ -161,7 +161,7 @@ class TokenRotationError(PostvoxError):
         self.account = account
 
 
-class ReauthorizationRequired(PostvoxError):
+class ReauthorizationRequired(MakervoxPublishError):
     """A scope or grant is missing and no refresh can add it.
 
     Scopes are FIXED at authorization time. Refreshing a token never widens
@@ -183,7 +183,7 @@ class ReauthorizationRequired(PostvoxError):
         self.scopes = list(scopes)
 
 
-class IdentityClash(PostvoxError):
+class IdentityClash(MakervoxPublishError):
     """An OAuth callback returned an account that belongs to a different label.
 
     Platforms issue a token for whichever account the BROWSER was signed into,
@@ -205,5 +205,5 @@ class IdentityClash(PostvoxError):
         self.platform_account_id = platform_account_id
 
 
-class LockUnavailable(PostvoxError):
+class LockUnavailable(MakervoxPublishError):
     """An advisory lock could not be acquired and policy says fail."""

@@ -51,7 +51,7 @@ import time
 from dataclasses import dataclass
 from typing import Any, Dict, Iterator, Optional
 
-from makervox_publish.errors import ConfigError, PostvoxError
+from makervox_publish.errors import ConfigError, MakervoxPublishError
 from makervox_publish.logging import get_logger, swallowed
 from makervox_publish.state.atomic import read_json, write_json
 from makervox_publish.state.locks import file_lock
@@ -651,7 +651,7 @@ def build_token_store(spec, state_cfg, *, cache_ttl_s: Optional[float] = None):
         extras["cache_ttl_s"] = float(cache_ttl_s)
     try:
         return spec.build(group="makervox_publish.token_stores", **extras)
-    except PostvoxError:
+    except MakervoxPublishError:
         raise
     except TypeError as exc:  # a third-party store with a narrower signature
         raise ConfigError(

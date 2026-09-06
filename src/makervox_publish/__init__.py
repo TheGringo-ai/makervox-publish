@@ -48,7 +48,7 @@ from makervox_publish.errors import (
     MediaError,
     NotConfigured,
     PluginError,
-    PostvoxError,
+    MakervoxPublishError,
     PublishError,
     ReauthorizationRequired,
     StagingPreconditionError,
@@ -82,7 +82,7 @@ __all__ = [
     "register_secret",
     "mask",
     # errors
-    "PostvoxError",
+    "MakervoxPublishError",
     "ConfigError",
     "PluginError",
     "MediaError",

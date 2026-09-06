@@ -22,7 +22,7 @@ except ImportError:  # pragma: no cover - Python < 3.8
     def runtime_checkable(cls):  # type: ignore[misc]
         return cls
 
-from makervox_publish.errors import PostvoxError
+from makervox_publish.errors import MakervoxPublishError
 from makervox_publish.logging import get_logger
 
 __all__ = [
@@ -39,7 +39,7 @@ log = get_logger(__name__)
 # --------------------------------------------------------------------------- #
 # errors
 # --------------------------------------------------------------------------- #
-class CredentialError(PostvoxError):
+class CredentialError(MakervoxPublishError):
     """Base class for credential-resolution problems."""
 
 

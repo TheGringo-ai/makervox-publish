@@ -25,6 +25,14 @@ jobs:
           pip install -e ".[toml]" pytest
       - name: Test
         run: pytest -q
+      # The console script is declared in pyproject and is NOT exercised by
+      # importing the package. v0.1.0 shipped with it pointing at a module that
+      # did not exist, so `makervox-publish` was a ModuleNotFoundError for every
+      # installer while every other check stayed green.
+      - name: Console script must run
+        run: |
+          makervox-publish --version
+          makervox-publish --help > /dev/null
 
   lint:
     runs-on: ubuntu-latest

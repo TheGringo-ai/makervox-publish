@@ -57,7 +57,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urlencode
 
 from makervox_publish.credentials import CredentialSpec, Credentials
-from makervox_publish.errors import IdentityClash, PostvoxError, ReauthorizationRequired
+from makervox_publish.errors import IdentityClash, MakervoxPublishError, ReauthorizationRequired
 from makervox_publish.logging import get_logger, mask
 from makervox_publish.platforms.tiktok.errors import TikTokApiError, is_scope_error
 
@@ -138,7 +138,7 @@ class TikTokAuth:
             # somebody else's domain, which is both an identity leak and a
             # silent misconfiguration that still produces a working-looking
             # OAuth screen.
-            raise PostvoxError(
+            raise MakervoxPublishError(
                 "platforms.tiktok.redirect_uri is not set. It must match a "
                 "redirect URI registered on YOUR OWN TikTok app; "
                 "http://127.0.0.1:8722/tiktok/callback works with "
@@ -159,7 +159,7 @@ class TikTokAuth:
         """
         values, missing = self.client_credentials()
         if missing:
-            raise PostvoxError(self.not_configured_reason())
+            raise MakervoxPublishError(self.not_configured_reason())
         query = urlencode({
             "client_key": values[self.cfg.client_key_credential],
             "scope": self.scopes_for(account),
@@ -179,7 +179,7 @@ class TikTokAuth:
         """
         values, missing = self.client_credentials()
         if missing:
-            raise PostvoxError(self.not_configured_reason())
+            raise MakervoxPublishError(self.not_configured_reason())
 
         response = self.http.post(
             "{0}/oauth/token/".format(self.cfg.api_base),
@@ -249,7 +249,7 @@ class TikTokAuth:
         """
         values, missing = self.client_credentials()
         if missing:
-            raise PostvoxError(self.not_configured_reason())
+            raise MakervoxPublishError(self.not_configured_reason())
 
         tokens_cfg = self.cfg.tokens
         if not tokens_cfg.lock_refresh:
