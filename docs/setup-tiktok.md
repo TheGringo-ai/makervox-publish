@@ -1,4 +1,4 @@
-# Setting up a TikTok developer app for `postvox`
+# Setting up a TikTok developer app for `makervox_publish`
 
 You bring your own TikTok app. This document is the part that isn't code: registering
 the app, choosing products and scopes, surviving the OAuth exact-match rules, and
@@ -40,7 +40,7 @@ notification system.
 **Tier 2 is gated on a human review of your posting UI**, not on a form. Budget days,
 not an afternoon. Details in [Getting audited](#getting-audited-tier-2).
 
-`postvox` defaults to `mode = "inbox"` for exactly this reason: the honest default is
+`makervox_publish` defaults to `mode = "inbox"` for exactly this reason: the honest default is
 the one that works without permission.
 
 ---
@@ -60,7 +60,7 @@ You need, and cannot proceed without:
 - Only for Tier 2: a **domain you control and can serve a static file from**, and an
   app icon at exactly **1024×1024**, ≤5 MB.
 
-Notably you do **not** need a domain for Tier 1. `postvox auth tiktok <account>` runs a
+Notably you do **not** need a domain for Tier 1. `makervox_publish auth tiktok <account>` runs a
 loopback listener on `127.0.0.1`, and TikTok accepts a loopback redirect URI. See
 [Redirect URI](#redirect-uri-the-exact-match-rules).
 
@@ -152,7 +152,7 @@ have defaulted.
 
 **2. 🔑 SCOPES ARE FROZEN AT AUTHORIZATION. A token refresh does NOT widen them.**
 
-Adding a scope in the developer portal, or changing `scopes` in `postvox.toml`, does
+Adding a scope in the developer portal, or changing `scopes` in `makervox-publish.toml`, does
 **nothing** to any account that is already authorized. The token carries the scope set
 that was requested at the moment the user clicked Authorize, forever. Every refresh
 returns the same set.
@@ -160,14 +160,14 @@ returns the same set.
 The fix is a **browser re-authorization** of every account:
 
 ```sh
-postvox auth tiktok moonlit          # prints the URL; authorize in a browser
+makervox_publish auth tiktok moonlit          # prints the URL; authorize in a browser
 ```
 
 The symptom, if you forget, is `scope_not_authorized` on a call you "just enabled".
-`postvox` says this out loud in the error rather than making you infer it:
+`makervox_publish` says this out loud in the error rather than making you infer it:
 
 > TikTok denied video.list for 'moonlit': … Scopes are fixed at authorization —
-> re-auth the account: `postvox auth tiktok moonlit`
+> re-auth the account: `makervox_publish auth tiktok moonlit`
 
 Corollary: authorize with the **full** scope set you might plausibly want, the first
 time. Adding `user.info.stats` a year later means chasing down every brand account's
@@ -208,7 +208,7 @@ URL, once as a form field in the `POST /v2/oauth/token/` exchange. A mismatch be
 those two is rejected at exchange time, after the user has already authorized, which
 makes it look like the *code* is bad.
 
-`postvox` reads the value once from config and uses that same string in both places,
+`makervox_publish` reads the value once from config and uses that same string in both places,
 which removes the whole class of bug. It has **no default** — defaulting a redirect URI
 to somebody else's domain is both an identity leak and a silent misconfiguration — so
 an enabled TikTok platform with no `redirect_uri` raises `ConfigError` at load, not at
@@ -222,7 +222,7 @@ Register a loopback URL on the app and use it:
 http://127.0.0.1:8722/tiktok/callback
 ```
 
-`postvox auth tiktok <account>` starts a local listener on that host/port, catches the
+`makervox_publish auth tiktok <account>` starts a local listener on that host/port, catches the
 `?code=`, and exchanges it. Nothing is exposed to the internet. Use `localhost` **or**
 `127.0.0.1` consistently in both places — they are different strings, so they are
 different URIs.
@@ -262,7 +262,7 @@ on the allow-list.
 ## Step 5 — Credentials into config
 
 Put the **names** of your secrets in the config file, and the values in environment
-variables (or a keyring, or a secret manager). `postvox` never wants a secret value in
+variables (or a keyring, or a secret manager). `makervox_publish` never wants a secret value in
 a config file:
 
 ```sh
@@ -278,7 +278,7 @@ Production tab for the production key — they are different values).
 ## Step 6 — Authorize each account
 
 ```sh
-postvox auth tiktok moonlit
+makervox_publish auth tiktok moonlit
 # → opens/prints the authorize URL, catches the callback on 127.0.0.1:8722,
 #   exchanges the code, stores the token set under the name "moonlit"
 ```
@@ -288,7 +288,7 @@ postvox auth tiktok moonlit
 **TikTok issues a token for whichever account the BROWSER is signed into, not the one
 named on your command line.**
 
-Running `postvox auth tiktok dailyverse` while your browser is still logged in as
+Running `makervox_publish auth tiktok dailyverse` while your browser is still logged in as
 `moonlit` stores **moonlit's** credentials under the key `dailyverse`. Nothing errors.
 Then:
 
@@ -301,13 +301,13 @@ Then:
 This happened for weeks in the source pipeline before anyone noticed, and the reported
 symptom (`spam_risk`) was two causal steps away from the real problem.
 
-`postvox` refuses the save when the returned account id already belongs to a different
+`makervox_publish` refuses the save when the returned account id already belongs to a different
 local account name (`cli.auth_listener.refuse_identity_clash = true`, on by default):
 
 > refusing to save: this authorization is for the SAME TikTok account already stored as
 > 'moonlit' (open_id 6b2f9a3c1d0e…). You were signed into 'moonlit' in the browser. Log
 > out of TikTok (or use a private window), sign in as the 'dailyverse' account, and run:
-> `postvox auth tiktok dailyverse`
+> `makervox_publish auth tiktok dailyverse`
 
 **Procedure: use a private/incognito window per account.** Then verify the stored
 `open_id` values differ. Do not skip the verify — this is exactly the failure that
@@ -318,7 +318,7 @@ looks fine.
 ## Step 7 — Post something (Tier 1)
 
 ```sh
-postvox publish tiktok moonlit ./reel.mp4
+makervox_publish publish tiktok moonlit ./reel.mp4
 ```
 
 What happens, and what each part will bite you on:
@@ -345,7 +345,7 @@ and **the last chunk absorbs the remainder** (so the final chunk is larger than
 `invalid chunk count` on any file above the ceiling.
 
 Separately: 64 MiB is the documented ceiling, **20 MiB is the empirically reliable
-chunk size**. Both numbers are real. Don't "correct" one from the other; `postvox`
+chunk size**. Both numbers are real. Don't "correct" one from the other; `makervox_publish`
 ships 20 MiB (`upload.max_chunk_bytes`) with the reason in a comment for exactly this
 reason.
 
@@ -364,7 +364,7 @@ Poll for status and record what you actually got:
 - `PROCESSING_UPLOAD` / `PROCESSING_*` — accepted, still finalizing
 - `FAILED`, `EXPIRED` — dead
 
-`postvox` polls (`publish.confirm`, 6 attempts × 4 s) and treats a still-`PROCESSING`
+`makervox_publish` polls (`publish.confirm`, 6 attempts × 4 s) and treats a still-`PROCESSING`
 result as accepted rather than reporting a false failure — but it records the literal
 status, so a later audit of your ledger can answer "how many of these were ever
 public?" That question is the whole reason the field exists.
@@ -444,12 +444,12 @@ The screen must show, per post:
 - an explicit **Post** action (consent).
 
 Also enforced by the API, so enforce it locally and fail fast: **branded content may
-not be posted with `SELF_ONLY` visibility.** `postvox` refuses that combination before
+not be posted with `SELF_ONLY` visibility.** `makervox_publish` refuses that combination before
 upload (`publish.refuse_branded_private`) rather than after you've pushed 40 MB.
 
 `creator_info` must be **fetched live and never cached** — a creator can flip their
 account to private at any moment, and a cached `PUBLIC_TO_EVERYONE` would post against
-their current setting. `postvox` defaults `creator_info_cache_s = 0`. Don't raise it.
+their current setting. `makervox_publish` defaults `creator_info_cache_s = 0`. Don't raise it.
 
 ⚠️ `creator_info` itself requires `video.publish`. With a `video.upload`-only token it
 returns `scope_not_authorized` and the screen renders empty — so **scope + re-auth must
@@ -570,7 +570,7 @@ brand account's password.
 This is a realistic failure, not a theoretical one: five scheduled publishes a day plus
 a metrics job plus a health check is enough overlap.
 
-`postvox` ships three defences, all on by default:
+`makervox_publish` ships three defences, all on by default:
 
 1. **`lock_refresh`** — a file lock serializes refreshes on this host.
 2. **`reread_inside_lock`** — re-read the token store *inside* the lock: if whoever
@@ -625,7 +625,7 @@ refreshing.
 |---|---|---|
 | `spam_risk_too_many_pending_share` | Tier-1 drafts pile up unposted. The pending-share cap is **~5**. Nothing you do in code drains it. | A human publishes or deletes the pending drafts. Then keep daily uploads under ~5, or get audited. |
 | Same, arriving twice as fast as expected | Two brand names share one TikTok identity — an auth done in a browser signed into the wrong account. Both drain one quota. | Compare stored `open_id`s. Re-auth the wrong one in a private window. |
-| `scope_not_authorized` on a call you just enabled | Scopes are frozen at authorization; a refresh doesn't add them. | `postvox auth tiktok <account>` — full browser re-auth. |
+| `scope_not_authorized` on a call you just enabled | Scopes are frozen at authorization; a refresh doesn't add them. | `makervox_publish auth tiktok <account>` — full browser re-auth. |
 | `scope_not_authorized` from `creator_info` | `creator_info` needs `video.publish`, not `video.upload`. | Re-auth with `video.publish` in the scope string. |
 | `user/info` errors when asking for `follower_count` | `user.info.basic` is identity-only. | Add `user.info.stats`, re-auth. |
 | `unaudited_client_can_only_post_to_private_accounts` | Your app is not audited. The **account** must be private — `SELF_ONLY` does not satisfy it. | Tier 1, or get audited. To film a demo, temporarily make the account private. |
@@ -691,7 +691,7 @@ on this API:
 Every value below is a **fake placeholder**. Secrets are named, never inlined.
 
 ```toml
-# postvox.toml
+# makervox-publish.toml
 version = 1
 
 [platforms.tiktok]
@@ -740,7 +740,7 @@ max_videos     = 400
 
 [platforms.tiktok.metrics.follower_log]
 enabled = false                # opt-in; writes nothing by default
-path    = "~/.local/state/postvox/tiktok_followers.csv"
+path    = "~/.local/state/makervox_publish/tiktok_followers.csv"
 one_row_per_day = true         # a job that runs twice must not fake a datapoint
 
 # --- accounts -------------------------------------------------------------
@@ -762,10 +762,10 @@ auto_publish = false           # this one uploads to the inbox; a human taps pub
 
 # --- token store ----------------------------------------------------------
 [token_stores.tiktok_tokens]
-impl = "postvox.state.token_store:FileTokenStore"
+impl = "makervox_publish.state.token_store:FileTokenStore"
 
 [token_stores.tiktok_tokens.options]
-path         = "~/.local/state/postvox/tiktok_tokens.json"
+path         = "~/.local/state/makervox_publish/tiktok_tokens.json"
 atomic_write = true
 lock         = "tiktok-tokens"
 

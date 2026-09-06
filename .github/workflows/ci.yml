@@ -55,9 +55,9 @@ jobs:
           def _boom(*a, **k):
               raise AssertionError("import opened a socket")
           socket.socket.connect = _boom
-          import postvox
-          from postvox.platforms.tiktok import client
-          from postvox.platforms.meta import facebook, instagram
-          from postvox.platforms.x import client as xc
-          print("clean import:", postvox.__version__)
+          import makervox_publish
+          from makervox_publish.platforms.tiktok import client
+          from makervox_publish.platforms.meta import facebook, instagram
+          from makervox_publish.platforms.x import client as xc
+          print("clean import:", makervox_publish.__version__)
           PY

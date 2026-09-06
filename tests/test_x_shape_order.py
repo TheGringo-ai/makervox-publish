@@ -12,7 +12,7 @@ So these tests assert MID-pipeline, on ShapeTrace, not just on the output.
 
 from __future__ import annotations
 
-from postvox.text.shape import (
+from makervox_publish.text.shape import (
     DEFAULT_TRAILING_CONNECTORS,
     fingerprint,
     shape,

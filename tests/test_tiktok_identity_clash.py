@@ -17,11 +17,11 @@ import json
 
 import pytest
 
-from postvox import Config
-from postvox.errors import IdentityClash
-from postvox.http import HttpClient, HttpPolicy
-from postvox.platforms.tiktok.auth import TikTokAuth
-from postvox.state.token_store import FileTokenStore, LockSettings
+from makervox_publish import Config
+from makervox_publish.errors import IdentityClash
+from makervox_publish.http import HttpClient, HttpPolicy
+from makervox_publish.platforms.tiktok.auth import TikTokAuth
+from makervox_publish.state.token_store import FileTokenStore, LockSettings
 
 
 class FakeResponse:
@@ -62,7 +62,7 @@ def build(tmp_path, monkeypatch, responses):
             "redirect_uri": "http://127.0.0.1:8722/tiktok/callback",
         }},
         "token_stores": {"tiktok_tokens": {
-            "impl": "postvox.state.token_store:FileTokenStore",
+            "impl": "makervox_publish.state.token_store:FileTokenStore",
             "options": {"path": str(tmp_path / "tiktok_tokens.json")},
         }},
     })

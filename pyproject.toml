@@ -3,7 +3,7 @@ requires = ["setuptools>=64", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "postvox"
+name = "makervox-publish"
 version = "0.1.0"
 description = "Self-hosted social publishing for people who bring their own developer apps."
 readme = "README.md"
@@ -25,7 +25,7 @@ classifiers = [
   "Typing :: Typed",
 ]
 
-# ONE runtime dependency. Everything else is an extra, and importing postvox
+# ONE runtime dependency. Everything else is an extra, and importing makervox_publish
 # must never import any of them.
 dependencies = ["requests>=2.28"]
 
@@ -51,45 +51,45 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/example-org/postvox"
-Documentation = "https://github.com/example-org/postvox/tree/main/docs"
-Issues = "https://github.com/example-org/postvox/issues"
+Homepage = "https://github.com/example-org/makervox_publish"
+Documentation = "https://github.com/example-org/makervox_publish/tree/main/docs"
+Issues = "https://github.com/example-org/makervox_publish/issues"
 
 [project.scripts]
-postvox = "postvox.cli.main:main"
+makervox-publish = "makervox_publish.cli.main:main"
 
-# Third parties publish providers/stagers against these groups so that postvox
+# Third parties publish providers/stagers against these groups so that makervox_publish
 # never takes a dependency on Vault, AWS, 1Password, etc.
-[project.entry-points."postvox.credential_providers"]
-env = "postvox.credentials.env:EnvProvider"
-static = "postvox.credentials.static:StaticProvider"
-json_file = "postvox.credentials.json_file:JsonFileProvider"
-keyring = "postvox.credentials.keyring:KeyringProvider"
-gcp_secret_manager = "postvox.credentials.gcp_secret_manager:SecretManagerProvider"
+[project.entry-points."makervox_publish.credential_providers"]
+env = "makervox_publish.credentials.env:EnvProvider"
+static = "makervox_publish.credentials.static:StaticProvider"
+json_file = "makervox_publish.credentials.json_file:JsonFileProvider"
+keyring = "makervox_publish.credentials.keyring:KeyringProvider"
+gcp_secret_manager = "makervox_publish.credentials.gcp_secret_manager:SecretManagerProvider"
 
-[project.entry-points."postvox.cover_pickers"]
-brightness_scan = "postvox.media.cover:BrightnessScanCoverPicker"
+[project.entry-points."makervox_publish.cover_pickers"]
+brightness_scan = "makervox_publish.media.cover:BrightnessScanCoverPicker"
 
-[project.entry-points."postvox.token_stores"]
-file = "postvox.state.token_store:FileTokenStore"
+[project.entry-points."makervox_publish.token_stores"]
+file = "makervox_publish.state.token_store:FileTokenStore"
 
 # Instagram can only PULL media by URL, so a stager is required to publish a
 # local file. There is deliberately no default: only you know where you can
 # serve a file from.
-[project.entry-points."postvox.media_stagers"]
-gcs = "postvox.platforms.meta.staging.gcs:GcsStager"
-static_dir = "postvox.platforms.meta.staging.http_dir:StaticDirStager"
+[project.entry-points."makervox_publish.media_stagers"]
+gcs = "makervox_publish.platforms.meta.staging.gcs:GcsStager"
+static_dir = "makervox_publish.platforms.meta.staging.http_dir:StaticDirStager"
 
-[project.entry-points."postvox.link_taggers"]
-noop = "postvox.text.links:NoopTagger"
-utm = "postvox.text.links:UtmTagger"
+[project.entry-points."makervox_publish.link_taggers"]
+noop = "makervox_publish.text.links:NoopTagger"
+utm = "makervox_publish.text.links:UtmTagger"
 
 # Counter stores back the pay-per-post daily cap. The JSON one is an unlocked
 # read-modify-write and is correct only for a single serialized writer; the
-# SQLite one is safe for concurrent callers. See postvox.state.counters.
-[project.entry-points."postvox.counter_stores"]
-json = "postvox.state.counters:JsonCounterStore"
-sqlite = "postvox.state.counters:SqliteCounterStore"
+# SQLite one is safe for concurrent callers. See makervox_publish.state.counters.
+[project.entry-points."makervox_publish.counter_stores"]
+json = "makervox_publish.state.counters:JsonCounterStore"
+sqlite = "makervox_publish.state.counters:SqliteCounterStore"
 
 [tool.setuptools]
 package-dir = { "" = "src" }
@@ -98,7 +98,7 @@ package-dir = { "" = "src" }
 where = ["src"]
 
 [tool.setuptools.package-data]
-postvox = ["py.typed"]
+makervox_publish = ["py.typed"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -128,8 +128,8 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 # __init__ re-exports the public API; unused-import IS the point.
-"src/postvox/__init__.py" = ["F401"]
-"src/postvox/*/__init__.py" = ["F401"]
+"src/makervox_publish/__init__.py" = ["F401"]
+"src/makervox_publish/*/__init__.py" = ["F401"]
 # Tests reach into internals and shadow names on purpose.
 "tests/*" = ["B011", "SIM117"]
 

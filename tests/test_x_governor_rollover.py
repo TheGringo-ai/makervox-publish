@@ -16,9 +16,9 @@ import datetime as dt
 
 import pytest
 
-from postvox.config.schema import XGovernorConfig
-from postvox.platforms.x.governor import Governor
-from postvox.state.counters import JsonCounterStore, MemoryCounterStore
+from makervox_publish.config.schema import XGovernorConfig
+from makervox_publish.platforms.x.governor import Governor
+from makervox_publish.state.counters import JsonCounterStore, MemoryCounterStore
 
 
 class Clock:

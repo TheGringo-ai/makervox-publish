@@ -12,8 +12,8 @@ LAST chunk rather than in an extra one.
 
 import pytest
 
-from postvox.errors import PublishError
-from postvox.platforms.tiktok.upload import plan_chunks
+from makervox_publish.errors import PublishError
+from makervox_publish.platforms.tiktok.upload import plan_chunks
 
 MiB = 1024 * 1024
 CAP = 20 * MiB          # the empirical reliability setting, not the 64 MiB doc ceiling

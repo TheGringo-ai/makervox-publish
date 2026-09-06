@@ -1,8 +1,8 @@
-# postvox
+# makervox_publish
 
 **Post to TikTok, Facebook, Instagram and X from Python — with your own developer apps.**
 
-[![CI](https://github.com/TheGringo-ai/postvox/actions/workflows/ci.yml/badge.svg)](https://github.com/TheGringo-ai/postvox/actions/workflows/ci.yml)
+[![CI](https://github.com/TheGringo-ai/makervox-publish/actions/workflows/ci.yml/badge.svg)](https://github.com/TheGringo-ai/makervox-publish/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
 [![Dependencies: 1](https://img.shields.io/badge/dependencies-requests-brightgreen.svg)](pyproject.toml)
@@ -35,7 +35,7 @@ contribution — see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ---
 
-**You bring your own developer apps.** postvox publishes to TikTok, Facebook,
+**You bring your own developer apps.** makervox_publish publishes to TikTok, Facebook,
 Instagram and X using *your* TikTok app, *your* Meta app and *your* X app.
 There is no shared application, no hosted OAuth broker, no account system and
 no default that points at anyone else's domain or cloud project. Anything only
@@ -44,13 +44,13 @@ id — has **no default** and raises `ConfigError` rather than guessing.
 
 It is a library first and a CLI second, with one runtime dependency
 (`requests`) and optional extras for the things you may not want
-(`postvox[gcp]`, `postvox[s3]`, `postvox[keyring]`, `postvox[toml]`,
-`postvox[yaml]`).
+(`makervox-publish[gcp]`, `makervox-publish[s3]`, `makervox-publish[keyring]`, `makervox-publish[toml]`,
+`makervox-publish[yaml]`).
 
 ```python
-from postvox import Config, Credentials
+from makervox_publish import Config, Credentials
 
-cfg   = Config.load()          # ./postvox.toml, ~/.config/postvox/…, /etc/postvox/…
+cfg   = Config.load()          # ./makervox-publish.toml, ~/.config/makervox-publish/…, /etc/makervox-publish/…
 creds = Credentials.default()  # environment variables; no file, no cloud, no network
 
 values, missing = creds.require(["X_API_KEY", "X_API_SECRET"])
@@ -61,9 +61,9 @@ if missing:
 ## Install
 
 ```sh
-pip install postvox                 # library + CLI
-pip install "postvox[toml]"         # TOML config on Python 3.9 / 3.10
-pip install "postvox[gcp,keyring]"  # optional credential + staging backends
+pip install makervox-publish                 # library + CLI
+pip install "makervox-publish[toml]"         # TOML config on Python 3.9 / 3.10
+pip install "makervox-publish[gcp,keyring]"  # optional credential + staging backends
 ```
 
 Python 3.9 or newer. `ffmpeg`/`ffprobe` are optional: without them, cover-frame
@@ -73,12 +73,12 @@ with one warning at startup instead of failing mid-publish.
 ## Configure
 
 Copy [`config.example.toml`](config.example.toml) — every value in it is a fake
-placeholder — to `./postvox.toml`, `~/.config/postvox/postvox.toml` or
-`/etc/postvox/postvox.toml`, or point `POSTVOX_CONFIG` at any path. Any
-`POSTVOX_`-prefixed environment variable overlays the file:
+placeholder — to `./makervox-publish.toml`, `~/.config/makervox-publish/makervox-publish.toml` or
+`/etc/makervox-publish/makervox-publish.toml`, or point `MAKERVOX_PUBLISH_CONFIG` at any path. Any
+`MAKERVOX_PUBLISH_`-prefixed environment variable overlays the file:
 
 ```sh
-POSTVOX_PLATFORMS__X__GOVERNOR__DAILY_CAP=2
+MAKERVOX_PUBLISH_PLATFORMS__X__GOVERNOR__DAILY_CAP=2
 ```
 
 **The config file holds secret NAMES, never secret VALUES.** Every

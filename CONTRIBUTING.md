@@ -19,7 +19,7 @@ code.
 
 ## Adding a platform
 
-Platforms live in `src/postvox/platforms/<name>/` and depend only on the layers
+Platforms live in `src/makervox_publish/platforms/<name>/` and depend only on the layers
 beneath them:
 
 ```

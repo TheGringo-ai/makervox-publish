@@ -1,7 +1,7 @@
 # Platform limits
 
 Vendor realities that no amount of code will fix. If you are about to open an
-issue asking why postvox cannot do one of these, the answer is that the
+issue asking why makervox_publish cannot do one of these, the answer is that the
 platform does not allow it.
 
 Corrections and additions are very welcome — especially for platforms whose

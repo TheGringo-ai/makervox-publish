@@ -24,13 +24,13 @@ import time
 
 import pytest
 
-from postvox import Config
-from postvox.errors import ReauthorizationRequired
-from postvox.http import HttpClient, HttpPolicy
-from postvox.platforms.tiktok.auth import TikTokAuth
-from postvox.platforms.tiktok.errors import TikTokApiError
-from postvox.state import token_store as token_store_module
-from postvox.state.token_store import FileTokenStore, LockSettings
+from makervox_publish import Config
+from makervox_publish.errors import ReauthorizationRequired
+from makervox_publish.http import HttpClient, HttpPolicy
+from makervox_publish.platforms.tiktok.auth import TikTokAuth
+from makervox_publish.platforms.tiktok.errors import TikTokApiError
+from makervox_publish.state import token_store as token_store_module
+from makervox_publish.state.token_store import FileTokenStore, LockSettings
 
 
 # --------------------------------------------------------------------------- #
@@ -76,7 +76,7 @@ def make_config(tmp_path):
             "redirect_uri": "http://127.0.0.1:8722/tiktok/callback",
         }},
         "token_stores": {"tiktok_tokens": {
-            "impl": "postvox.state.token_store:FileTokenStore",
+            "impl": "makervox_publish.state.token_store:FileTokenStore",
             "options": {"path": str(tmp_path / "tiktok_tokens.json"),
                         "lock": "tiktok-tokens"},
         }},

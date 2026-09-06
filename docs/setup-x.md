@@ -1,6 +1,6 @@
-# Setting up an X (Twitter) developer app for postvox
+# Setting up an X (Twitter) developer app for makervox_publish
 
-*Self-hosting guide. You register your own X app; postvox never ships one.*
+*Self-hosting guide. You register your own X app; makervox_publish never ships one.*
 
 ---
 
@@ -70,7 +70,7 @@ It is also cosmetic; it is not shown on your posts (the *account* name is).
 >
 > On X specifically, be aware that one set of OAuth 1.0a credentials = **one account**. Multi-brand
 > posting through one credential set is not multi-account posting; it is several brands writing to
-> the same timeline. postvox's `enabled_accounts` allow-list exists for exactly this reason.
+> the same timeline. makervox_publish's `enabled_accounts` allow-list exists for exactly this reason.
 
 ### 1.3 User authentication settings — the screen that gates everything
 
@@ -94,7 +94,7 @@ Hit **Save**. If it refuses without telling you why, it is almost always the Web
 ### 1.4 Enable OAuth 1.0a
 
 On the same screen there are two independent toggles: **OAuth 2.0** and **OAuth 1.0a**. Turn on
-**OAuth 1.0a**. postvox's X client uses OAuth 1.0a user context, signed per request — see §4 for
+**OAuth 1.0a**. makervox_publish's X client uses OAuth 1.0a user context, signed per request — see §4 for
 why that is the right choice for an unattended poster.
 
 You can leave OAuth 2.0 on as well. It does not interfere.
@@ -103,7 +103,7 @@ You can leave OAuth 2.0 on as well. It does not interfere.
 
 Open the **Keys and tokens** tab. There are three pairs and they are not interchangeable:
 
-| Credential | Also called | Used by postvox? | Notes |
+| Credential | Also called | Used by makervox_publish? | Notes |
 |---|---|---|---|
 | **API Key / API Key Secret** | Consumer Key / Secret | ✅ `X_API_KEY`, `X_API_SECRET` | Identifies the *app*. ~25 and ~50 chars. |
 | **Bearer Token** | App-only auth | ❌ **No** | ~116 chars. **Cannot post.** App-only auth has no user to post as. Generating one and wondering why `POST /2/tweets` 403s is a common dead end. |
@@ -214,7 +214,7 @@ part of the comparison:
    replacement.
 
 3. **Pin the port.** A loopback listener that grabs a random free port cannot have a registered
-   callback. postvox's config pins it:
+   callback. makervox_publish's config pins it:
 
    ```toml
    [cli.auth_listener]
@@ -277,7 +277,7 @@ These are the things people assume they will get and then cannot afford:
 
 ## Part 4 — Token lifetime and refresh behaviour
 
-### OAuth 1.0a (what postvox uses, and why)
+### OAuth 1.0a (what makervox_publish uses, and why)
 
 **The access token and secret do not expire.** There is no refresh flow, no expiry timestamp, and
 nothing to schedule. For an unattended daily poster this is a feature, not a legacy wart: the whole
@@ -316,7 +316,7 @@ under the previous branding were cleared. Rename an account you care about with 
 - 🔑 **Rotation-on-use is a concurrency bug waiting to happen.** Two processes refreshing the same
   account destroys one of them, and recovery is a manual browser re-authorization. If you go this
   route, serialize the refresh across the read *and* the write, re-read inside the lock so the loser
-  adopts the winner's token, and write to local disk *before* anything that can time out. postvox's
+  adopts the winner's token, and write to local disk *before* anything that can time out. makervox_publish's
   token stores do exactly this; it is documented in `docs/scar-tissue.md`.
 
 For a single-account headless poster, **use OAuth 1.0a and avoid the entire problem.**
@@ -341,7 +341,7 @@ the reason this section exists.
   the scheduler actually runs**. The publisher raised `ImportError`, the per-platform dispatcher
   swallowed it as "this platform is unavailable," and the log line read as routine.
 - **Fix:** make the missing-dependency path *loud* and distinguishable from "not configured yet".
-  postvox returns a specific reason string (`requests_oauthlib not installed`) rather than a generic
+  makervox_publish returns a specific reason string (`requests_oauthlib not installed`) rather than a generic
   false. Also: check the interpreter your scheduler uses, not the one in your shell — they are
   frequently different, and on a Mac with a broken Homebrew Python they can be very different.
 
@@ -406,7 +406,7 @@ the reason this section exists.
 
   ```toml
   [platforms.x.governor.state]
-  options = { path = "~/.local/state/postvox/x_governor.json" }   # ONE file
+  options = { path = "~/.local/state/makervox_publish/x_governor.json" }   # ONE file
   ```
 
 ### 5.7 An unexpected brand starts posting
@@ -414,7 +414,7 @@ the reason this section exists.
 - **Symptom:** content from a completely different product lands on the wrong account.
 - **Cause:** a shared `send_post()` path and a **deny-list** instead of an allow-list. Anything not
   explicitly denied inherited posting rights the moment it passed some other gate.
-- **Fix:** allow-list, and **empty means deny all**. postvox ships `enabled_accounts = []` semantics
+- **Fix:** allow-list, and **empty means deny all**. makervox_publish ships `enabled_accounts = []` semantics
   as deny-all deliberately; a generic package that defaulted to allow-all would invert the safety
   property the setting exists for.
 
@@ -471,7 +471,7 @@ the reason this section exists.
 - **Cause:** a content generator gained a new category name that was never added to the
   `allowed_slugs` allow-list.
 - **Fix:** a test that asserts every generator category appears in the allow-list. Also note the
-  deliberate asymmetry postvox ships, which is not an oversight:
+  deliberate asymmetry makervox_publish ships, which is not an oversight:
 
   ```
   listed slug        -> allowed
@@ -496,7 +496,7 @@ the reason this section exists.
 
 - **Symptom:** you pass an `.mp4` and get a text-only post.
 - **Cause:** video needs the chunked `INIT` / `APPEND` / `FINALIZE` flow on the v1.1 media endpoint
-  plus `STATUS` polling until processing completes. postvox implements **stills only** — a single
+  plus `STATUS` polling until processing completes. makervox_publish implements **stills only** — a single
   multipart POST.
 - **Fix:** either build the chunked path, or post the text and share the video by hand. Note that
   vertical 9:16 clips of 60–75 seconds are not native to X anyway; measure whether X sends you
@@ -599,7 +599,7 @@ export X_ACCESS_SECRET="AbCdEfGhIjKlMnOpQrStUvWxYz0123456789aBcDeF"
 Use `printf %s` rather than `echo` when writing these to a file. A trailing newline breaks the
 OAuth signature and produces a `401` indistinguishable from a wrong key.
 
-### `postvox.toml`
+### `makervox-publish.toml`
 
 The config file holds credential **names**, never credential **values**, so it is safe to commit.
 
@@ -635,8 +635,8 @@ allowed_slugs    = ["howto", "explainer", "reference", "definition"]
 # ONE state file for the account. A per-brand file lets two brands each spend
 # their own "1 per day" onto the same timeline — doubling cadence and bill while
 # every check still reads green.
-impl    = "postvox.state.counters:JsonCounterStore"
-options = { path = "~/.local/state/postvox/x_governor.json" }
+impl    = "makervox_publish.state.counters:JsonCounterStore"
+options = { path = "~/.local/state/makervox_publish/x_governor.json" }
 # JsonCounterStore is an unlocked read-modify-write: correct only when callers are
 # serialized on one machine. For threads/workers/containers use SqliteCounterStore.
 
@@ -680,7 +680,7 @@ port = 8722
 Any value can be overridden by environment for a one-off:
 
 ```sh
-POSTVOX_PLATFORMS__X__GOVERNOR__DAILY_CAP=2 postvox publish …
+MAKERVOX_PUBLISH_PLATFORMS__X__GOVERNOR__DAILY_CAP=2 makervox_publish publish …
 ```
 
 ---
@@ -721,7 +721,7 @@ one-off is a cap that stays edited.
 | Time to first programmatic post | ~30 minutes, if you get §1.5 right |
 | Free tier | **No.** Prepaid credits from post one. |
 | Token expiry (OAuth 1.0a) | **Never.** No refresh to schedule. |
-| Video support in postvox | Not implemented (chunked upload) |
+| Video support in makervox_publish | Not implemented (chunked upload) |
 | The one step everybody misses | Regenerating the access token **after** setting Read+Write |
 | The one thing that will cost you money silently | A URL in the post body |
 | Realistic expectation | A new account with few followers is heavily downranked. This opens the channel; it does not produce traffic. |

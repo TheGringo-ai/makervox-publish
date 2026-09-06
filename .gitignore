@@ -1,21 +1,21 @@
 # ---------------------------------------------------------------------------
 # Secrets, tokens and state.  These rules come FIRST and are deliberately
-# broad: postvox.yaml is designed to be safe to commit (it holds secret NAMES,
+# broad: makervox-publish.yaml is designed to be safe to commit (it holds secret NAMES,
 # never values), but a real deployment's config is still not yours to publish,
 # and one accidental `git add -A` of a token file spends credentials that
 # cannot always be revoked.
 # ---------------------------------------------------------------------------
-postvox.yaml
-postvox.yml
-postvox.toml
-postvox.json
+makervox-publish.yaml
+makervox-publish.yml
+makervox-publish.toml
+makervox-publish.json
 *.local.toml
 *.local.yaml
 *.local.json
 
 # ...but the shipped, all-fake example must stay tracked.
 !config.example.toml
-!examples/postvox.yaml
+!examples/makervox-publish.yaml
 !examples/*.example.*
 
 # Credential files
@@ -37,21 +37,21 @@ service-account*.json
 # Token stores / OAuth artifacts (any name, any location)
 *token*.json
 *tokens*.json
-/.postvox/
+/.makervox-publish/
 /state/
 /.state/
 # NOTE: these are ANCHORED with a leading slash on purpose. A bare
-# `state/` would also ignore src/postvox/state/, the package's own state
+# `state/` would also ignore src/makervox_publish/state/, the package's own state
 # backends — an ignored source directory is a very quiet way to lose code.
 
-# Runtime state written by postvox
+# Runtime state written by makervox-publish
 /delivered.jsonl
 *_governor.json
 *_followers.csv
-/postvox.db
-postvox.db-journal
-postvox.db-wal
-postvox.db-shm
+/makervox-publish.db
+makervox-publish.db-journal
+makervox-publish.db-wal
+makervox-publish.db-shm
 /locks/
 *.lock
 

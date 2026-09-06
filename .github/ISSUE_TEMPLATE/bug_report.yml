@@ -27,5 +27,5 @@ body:
   - type: input
     id: version
     attributes:
-      label: postvox version and Python version
+      label: makervox_publish version and Python version
     validations: { required: true }

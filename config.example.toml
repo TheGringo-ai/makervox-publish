@@ -1,13 +1,13 @@
 # ============================================================================
-# postvox.toml — example configuration.  EVERY VALUE BELOW IS A FAKE PLACEHOLDER.
+# makervox-publish.toml — example configuration.  EVERY VALUE BELOW IS A FAKE PLACEHOLDER.
 # ============================================================================
-# Copy to one of these (first file wins), or point POSTVOX_CONFIG at any path:
-#   ./postvox.toml
-#   $XDG_CONFIG_HOME/postvox/postvox.toml   (~/.config/postvox/postvox.toml)
-#   /etc/postvox/postvox.toml
+# Copy to one of these (first file wins), or point MAKERVOX_PUBLISH_CONFIG at any path:
+#   ./makervox-publish.toml
+#   $XDG_CONFIG_HOME/makervox_publish/makervox-publish.toml   (~/.config/makervox-publish/makervox-publish.toml)
+#   /etc/makervox-publish/makervox-publish.toml
 #
 # JSON is also read (.json), and YAML when PyYAML is installed (.yaml). TOML
-# needs nothing extra on Python 3.11+; on 3.9/3.10 install postvox[toml].
+# needs nothing extra on Python 3.11+; on 3.9/3.10 install makervox-publish[toml].
 #
 # RULE 1 — NO SECRETS IN THIS FILE. Every `*_credential` key below is the NAME
 #   of a secret, not the secret. Names are resolved by the credential provider
@@ -17,7 +17,7 @@
 # RULE 2 — This package assumes YOU own the developer app on each platform:
 #   your own TikTok app, your own Meta app, your own X app. There is no shared
 #   app, no hosted OAuth broker, and no default pointing at anyone else's domain
-#   or cloud project. Anything postvox cannot invent for you (an OAuth redirect
+#   or cloud project. Anything makervox_publish cannot invent for you (an OAuth redirect
 #   URI, a staging bucket) has NO default and raises ConfigError if used unset.
 #
 # RULE 3 — Anything spelled `impl` is a plugin: "module.path:Callable" plus an
@@ -25,8 +25,8 @@
 #   taggers, cover pickers, identity parsers, state backends) are injected from
 #   this file. Library callers pass real Python objects to Config(...) instead.
 #
-# Any POSTVOX_-prefixed environment variable overlays this file:
-#   POSTVOX_PLATFORMS__X__GOVERNOR__DAILY_CAP=2
+# Any MAKERVOX_PUBLISH_-prefixed environment variable overlays this file:
+#   MAKERVOX_PUBLISH_PLATFORMS__X__GOVERNOR__DAILY_CAP=2
 # ----------------------------------------------------------------------------
 
 version = 1                       # config schema version. Bumps are breaking.
@@ -36,11 +36,11 @@ version = 1                       # config schema version. Bumps are breaking.
 # state — every file this package writes lives under one root
 # ============================================================================
 [state]
-dir = "~/.local/state/postvox"    # one root; every path below defaults under it
+dir = "~/.local/state/makervox_publish"    # one root; every path below defaults under it
 dir_mode = 0o700                  # created dirs (tokens are secrets)
 file_mode = 0o600                 # token/state files, owner-only
 # Set false on filesystems with no POSIX modes (SMB/FAT/Windows). When false
-# postvox logs ONE warning that credentials are stored without owner-only
+# makervox_publish logs ONE warning that credentials are stored without owner-only
 # permissions, rather than silently degrading.
 enforce_file_mode = true
 
@@ -48,10 +48,10 @@ enforce_file_mode = true
 [state.locks]
 backend = "auto"                  # auto | fcntl | msvcrt | none
 #   auto -> fcntl on POSIX, msvcrt on Windows
-#   none -> NO locking. Must be chosen explicitly; postvox refuses to run
+#   none -> NO locking. Must be chosen explicitly; makervox_publish refuses to run
 #           unlocked by accident, because an unlocked TikTok refresh SPENDS a
 #           refresh token that cannot be recovered.
-dir = "~/.local/state/postvox/locks"
+dir = "~/.local/state/makervox_publish/locks"
 acquire_timeout_s = 120
 on_unavailable = "proceed"        # proceed | fail
 #   proceed = never drop a post over a lock file (the original behaviour)
@@ -63,29 +63,29 @@ on_unavailable = "proceed"        # proceed | fail
 # Delete this whole block and you get exactly [env], which needs no config.
 # ============================================================================
 [[credentials.providers]]
-impl = "postvox.credentials.env:EnvProvider"
-options = { prefix = "" }         # e.g. "POSTVOX_" to namespace your env vars
+impl = "makervox_publish.credentials.env:EnvProvider"
+options = { prefix = "" }         # e.g. "MAKERVOX_PUBLISH_" to namespace your env vars
 
 # Optional: a flat JSON (or .env) file of NAME -> value. Refuses to load a file
 # that is group- or world-readable unless allow_insecure_mode is set.
 [[credentials.providers]]
-impl = "postvox.credentials.json_file:JsonFileProvider"
-options = { path = "~/.config/postvox/secrets.json", required = false }
+impl = "makervox_publish.credentials.json_file:JsonFileProvider"
+options = { path = "~/.config/makervox-publish/secrets.json", required = false }
 # required = false -> a missing file simply skips this provider.
 
-# Optional extra: pip install "postvox[gcp]" — or leave use_cli true to shell
+# Optional extra: pip install "makervox-publish[gcp]" — or leave use_cli true to shell
 # out to `gcloud` rather than adding the dependency. NOT a default, and there
 # is NO default project id.
 # [[credentials.providers]]
-# impl = "postvox.credentials.gcp_secret_manager:SecretManagerProvider"
+# impl = "makervox_publish.credentials.gcp_secret_manager:SecretManagerProvider"
 # options = { project = "my-gcp-project-123", use_cli = false, probe_existence = true }
 #   probe_existence -> ONE `secrets list` call populates existence checks, so a
 #   handful of absent keys does not become a per-key subprocess storm.
 
-# Optional extra: pip install "postvox[keyring]"
+# Optional extra: pip install "makervox-publish[keyring]"
 # [[credentials.providers]]
-# impl = "postvox.credentials.keyring:KeyringProvider"
-# options = { service = "postvox" }
+# impl = "makervox_publish.credentials.keyring:KeyringProvider"
+# options = { service = "makervox_publish" }
 
 [credentials]
 cache_ttl_s = 300                 # in-process cache of resolved values
@@ -96,7 +96,7 @@ redact_in_logs = true             # resolved secrets are scrubbed from log recor
 # logging — this package NEVER print()s. It logs.
 # ============================================================================
 [logging]
-logger_name = "postvox"
+logger_name = "makervox_publish"
 level = "INFO"
 # Deliberate exception-swallows (cover art, thumbnail, transcode fallback,
 # staged-object cleanup, insights) each log at this level WITH the reason. A
@@ -122,7 +122,7 @@ require_ffmpeg = false
 # circular import between them.
 [media.cover]
 enabled = true
-impl = "postvox.media.cover:BrightnessScanCoverPicker"
+impl = "makervox_publish.media.cover:BrightnessScanCoverPicker"
 
 [media.cover.options]
 # Calibrated on reels that fade IN from black — frame 0 is literally brightness
@@ -164,7 +164,7 @@ on_failure = "raise"              # raise | use_original (both log at ERROR)
 # http — one timeout/retry policy, per operation class
 # ============================================================================
 [http]
-user_agent = "postvox/0.1 (+https://github.com/example-org/postvox)"
+user_agent = "makervox_publish/0.1 (+https://github.com/example-org/makervox_publish)"
 
 [http.timeouts_s]
 default = 30
@@ -191,7 +191,7 @@ retry_on = ["transport"]          # transport | 5xx | 429  (add at your own risk
 # twice in one day overwrites the first file, so two genuinely different videos
 # share one name. Dedupe on (account, date, key, slot, CONTENT HASH) instead.
 [identity]
-impl = "postvox.identity.post_id:FilenamePostIdentity"
+impl = "makervox_publish.identity.post_id:FilenamePostIdentity"
 on_unresolved = "warn_and_publish"   # warn_and_publish | refuse | publish
 # No date in the filename, an unreadable file, or a pre-fingerprint ledger row
 # all mean "cannot prove this is the same post". The default fails OPEN (a rare
@@ -221,13 +221,13 @@ hash_source_media = true
 # ledger — append-only delivery record. PUBLIC API, not an internal file.
 # ============================================================================
 [ledger]
-impl = "postvox.state.ledger:JsonlLedger"
-options = { path = "~/.local/state/postvox/delivered.jsonl" }
+impl = "makervox_publish.state.ledger:JsonlLedger"
+options = { path = "~/.local/state/makervox_publish/delivered.jsonl" }
 schema_version = 2                # v1 rows (no `sha`, no `slot`) are tolerated
                                   # and treated as "identity unknown"
 # Shipped alternative for multi-process/serverless hosts:
-#   impl = "postvox.state.ledger:SqliteLedger"
-#   options = { path = "~/.local/state/postvox/postvox.db" }
+#   impl = "makervox_publish.state.ledger:SqliteLedger"
+#   options = { path = "~/.local/state/makervox_publish/makervox-publish.db" }
 
 
 # ============================================================================
@@ -237,7 +237,7 @@ schema_version = 2                # v1 rows (no `sha`, no `slot`) are tolerated
 # The default is a NO-OP. A tagger hardcoded to one domain ships every other
 # brand's links untagged with no error at all, and a silent no-op is worse than
 # an obvious gap. Swap in UtmTagger and name your own domains:
-impl = "postvox.text.links:UtmTagger"
+impl = "makervox_publish.text.links:UtmTagger"
 
 [links.tagger.options]
 # Only URLs on these hosts get tagged. An empty list tags nothing.
@@ -270,7 +270,7 @@ collapse_blank_lines = true
 [accounts.moonlit]
 display_name = "Moonlit Example"
 # CTA text posted as the first comment where in-body links suppress reach.
-# postvox ships no marketing copy: if you want one, write it here.
+# makervox_publish ships no marketing copy: if you want one, write it here.
 first_comment = "Full write-up, free -> https://moonlit.example"
 link_url = "https://moonlit.example"
 platforms = ["tiktok", "facebook", "instagram", "x"]
@@ -311,7 +311,7 @@ client_key_credential = "TIKTOK_CLIENT_KEY"
 client_secret_credential = "TIKTOK_CLIENT_SECRET"
 
 # REQUIRED. No default. It must match a redirect URI registered on YOUR TikTok
-# app. `postvox auth tiktok <account>` runs a local loopback listener, so you do
+# app. `makervox_publish auth tiktok <account>` runs a local loopback listener, so you do
 # not need to own a domain — register the loopback URL on your app and use it.
 redirect_uri = "http://127.0.0.1:8722/tiktok/callback"
 
@@ -392,7 +392,7 @@ max_videos = 400                  # stop paging so a large account cannot loop
 
 [platforms.tiktok.metrics.follower_log]
 enabled = false                   # opt-in; writes nothing by default
-path = "~/.local/state/postvox/tiktok_followers.csv"
+path = "~/.local/state/makervox_publish/tiktok_followers.csv"
 # One row per UTC day, never two: a job that runs twice would otherwise turn a
 # flat day into a fake datapoint when the series is plotted.
 one_row_per_day = true
@@ -496,12 +496,12 @@ refresh_after_s = 4320000
 # Instagram PULLS media by URL — you cannot upload bytes. Local files must be
 # staged somewhere the platform can fetch, then removed.
 [platforms.instagram.staging]
-impl = "postvox.platforms.meta.staging.gcs:GcsStager"
+impl = "makervox_publish.platforms.meta.staging.gcs:GcsStager"
 
 [platforms.instagram.staging.options]
 bucket = "example-media-staging"  # REQUIRED. No default.
 # project = "my-gcp-project-123"  # omit to infer from application default creds
-prefix = "postvox-temp"
+prefix = "makervox_publish-temp"
 # PRECONDITION: per-object public ACLs require UNIFORM BUCKET-LEVEL ACCESS to be
 # DISABLED on the bucket. Modern buckets have it ENABLED by default, in which
 # case making an object public raises. The stager detects this and raises a
@@ -521,8 +521,8 @@ delete_after_publish = true
 # at ERROR with the full URI, not swallowed.
 #
 # Shipped alternatives:
-#   postvox.platforms.meta.staging.s3:S3Stager          (S3 / R2, presigned)
-#   postvox.platforms.meta.staging.http_dir:StaticDirStager (any web root)
+#   makervox_publish.platforms.meta.staging.s3:S3Stager          (S3 / R2, presigned)
+#   makervox_publish.platforms.meta.staging.http_dir:StaticDirStager (any web root)
 
 [platforms.instagram.publish]
 poll_attempts = 30                # reels MUST reach FINISHED before publish
@@ -582,12 +582,12 @@ enabled_accounts = ["moonlit"]
 allowed_slugs = ["howto", "explainer", "reference", "definition"]
 
 [platforms.x.governor.state]
-impl = "postvox.state.counters:JsonCounterStore"
-options = { path = "~/.local/state/postvox/x_governor.json" }
+impl = "makervox_publish.state.counters:JsonCounterStore"
+options = { path = "~/.local/state/makervox_publish/x_governor.json" }
 # The JSON store is an UNLOCKED read-modify-write, correct only when callers are
 # serialized on one machine. Two concurrent callers lose a count and double-post
 # — at real money per post. For threads, workers, containers or serverless use:
-#   impl = "postvox.state.counters:SqliteCounterStore"
+#   impl = "makervox_publish.state.counters:SqliteCounterStore"
 
 [platforms.x.shape]
 max_chars = 280
@@ -626,7 +626,7 @@ cta = "Full write-up, free"
 utm_medium = "social"
 
 [platforms.x.pricing]
-# Used ONLY by `postvox estimate` / dry-run output. Point-in-time figures —
+# Used ONLY by `makervox_publish estimate` / dry-run output. Point-in-time figures —
 # VERIFY on the current pricing page before trusting them. A dry run that
 # misstates the expensive branch is worse than no dry run.
 price_per_post = 0.015
@@ -649,10 +649,10 @@ image_failure_blocks_post = false
 # (facebook + instagram) share one file AND one lock, which is what stops a
 # read-modify-write race from losing a freshly refreshed token.
 [token_stores.meta_tokens]
-impl = "postvox.state.token_store:FileTokenStore"
+impl = "makervox_publish.state.token_store:FileTokenStore"
 
 [token_stores.meta_tokens.options]
-path = "~/.local/state/postvox/meta_tokens.json"
+path = "~/.local/state/makervox_publish/meta_tokens.json"
 # Schema: {"pages": {<page_id>: {...}}, "accounts": {<name>: <page_id>},
 #          "instagram": {<name>: {...}}}
 atomic_write = true               # write temp + os.replace, never truncate-in-place
@@ -662,10 +662,10 @@ lock = "meta-tokens"
 # The DEFAULT for a fresh install is a plain local file. The code this was
 # extracted from defaulted to a cloud secret backend, so every call on a machine
 # without that CLI paid a ~1s failed subprocess before falling back.
-impl = "postvox.state.token_store:FileTokenStore"
+impl = "makervox_publish.state.token_store:FileTokenStore"
 
 [token_stores.tiktok_tokens.options]
-path = "~/.local/state/postvox/tiktok_tokens.json"
+path = "~/.local/state/makervox_publish/tiktok_tokens.json"
 atomic_write = true
 lock = "tiktok-tokens"
 
@@ -673,15 +673,15 @@ lock = "tiktok-tokens"
 # local file as cache and offline fallback. Replace the block above with:
 #
 # [token_stores.tiktok_tokens]
-# impl = "postvox.state.token_store:MirroredTokenStore"
+# impl = "makervox_publish.state.token_store:MirroredTokenStore"
 #
 # [token_stores.tiktok_tokens.options.local]
-# impl = "postvox.state.token_store:FileTokenStore"
-# options = { path = "~/.local/state/postvox/tiktok_tokens.json", lock = "tiktok-tokens" }
+# impl = "makervox_publish.state.token_store:FileTokenStore"
+# options = { path = "~/.local/state/makervox_publish/tiktok_tokens.json", lock = "tiktok-tokens" }
 #
 # [token_stores.tiktok_tokens.options.remote]
-# impl = "postvox.state.token_store:SecretManagerTokenStore"
-# options = { project = "my-gcp-project-123", secret_id = "POSTVOX_TIKTOK_TOKENS", keep_versions = 3 }
+# impl = "makervox_publish.state.token_store:SecretManagerTokenStore"
+# options = { project = "my-gcp-project-123", secret_id = "MAKERVOX_PUBLISH_TIKTOK_TOKENS", keep_versions = 3 }
 #
 # WRITE ORDER MATTERS AND IS NOT CONFIGURABLE: local first, then remote. A
 # freshly rotated refresh token is UNRECOVERABLE if lost (the old one is already
@@ -699,7 +699,7 @@ lock = "tiktok-tokens"
 [cli]
 # Interpolated into every "run: <prog> auth <account>" hint. Defaults to
 # argv[0], so a wrapper script's own name appears in its own error messages.
-program_name = "postvox"
+program_name = "makervox_publish"
 
 [cli.auth_listener]
 # Local loopback OAuth helper, so self-hosters do not need to own a domain.

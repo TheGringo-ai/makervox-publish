@@ -15,9 +15,9 @@ refactor "fixes" into something dangerous:
 
 from __future__ import annotations
 
-from postvox.config.schema import XGovernorConfig
-from postvox.platforms.x.governor import Governor
-from postvox.state.counters import MemoryCounterStore
+from makervox_publish.config.schema import XGovernorConfig
+from makervox_publish.platforms.x.governor import Governor
+from makervox_publish.state.counters import MemoryCounterStore
 
 
 def governor(**kwargs) -> Governor:

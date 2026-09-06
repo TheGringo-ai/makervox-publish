@@ -18,7 +18,7 @@ import datetime as dt
 
 import pytest
 
-from postvox.config.schema import (
+from makervox_publish.config.schema import (
     AccountConfig,
     XConfig,
     XGovernorConfig,
@@ -27,11 +27,11 @@ from postvox.config.schema import (
     XPricingConfig,
     XShapeConfig,
 )
-from postvox.credentials import Credentials, StaticProvider
-from postvox.http.client import HttpClient
-from postvox.platforms.x.client import XClient
-from postvox.platforms.x.governor import Governor
-from postvox.state.counters import MemoryCounterStore
+from makervox_publish.credentials import Credentials, StaticProvider
+from makervox_publish.http.client import HttpClient
+from makervox_publish.platforms.x.client import XClient
+from makervox_publish.platforms.x.governor import Governor
+from makervox_publish.state.counters import MemoryCounterStore
 
 CREDS = {
     "X_API_KEY": "fake-key",

@@ -23,11 +23,11 @@ import time
 
 import pytest
 
-from postvox import Config
-from postvox.errors import PublishError
-from postvox.http import HttpClient, HttpPolicy
-from postvox.platforms.tiktok import TikTokClient
-from postvox.platforms.tiktok.errors import TikTokApiError
+from makervox_publish import Config
+from makervox_publish.errors import PublishError
+from makervox_publish.http import HttpClient, HttpPolicy
+from makervox_publish.platforms.tiktok import TikTokClient
+from makervox_publish.platforms.tiktok.errors import TikTokApiError
 
 MiB = 1024 * 1024
 
@@ -90,7 +90,7 @@ def build(tmp_path, monkeypatch, responses, **tiktok_overrides):
                                  "tiktok": {"auto_publish": True}}},
         "platforms": {"tiktok": tiktok},
         "token_stores": {"tiktok_tokens": {
-            "impl": "postvox.state.token_store:FileTokenStore",
+            "impl": "makervox_publish.state.token_store:FileTokenStore",
             "options": {"path": str(tmp_path / "state" / "tiktok_tokens.json")},
         }},
     })

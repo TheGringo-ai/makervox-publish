@@ -9,9 +9,9 @@ name: Release to PyPI
 #
 # One-time setup on pypi.org (maintainer only, cannot be automated):
 #   PyPI -> Your projects -> Publishing -> Add a new pending publisher
-#     PyPI project name : postvox
+#     PyPI project name : makervox_publish
 #     Owner             : TheGringo-ai
-#     Repository        : postvox
+#     Repository        : makervox_publish
 #     Workflow          : release.yml
 #     Environment       : pypi
 
@@ -40,11 +40,11 @@ jobs:
           python -m venv /tmp/verify
           /tmp/verify/bin/pip install dist/*.whl
           /tmp/verify/bin/python -c "
-          import postvox
-          from postvox.platforms.tiktok import client
-          from postvox.platforms.meta import facebook, instagram
-          from postvox.platforms.x import client as xc
-          print('ok', postvox.__version__)"
+          import makervox_publish
+          from makervox_publish.platforms.tiktok import client
+          from makervox_publish.platforms.meta import facebook, instagram
+          from makervox_publish.platforms.x import client as xc
+          print('ok', makervox_publish.__version__)"
       - uses: actions/upload-artifact@v4
         with:
           name: dist

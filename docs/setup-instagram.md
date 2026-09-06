@@ -38,7 +38,7 @@ job unchanged.
 
 Take Path B only if the account genuinely has no Facebook Page and you will not create one.
 
-`postvox` implements both and prefers A:
+`makervox_publish` implements both and prefers A:
 
 ```toml
 [platforms.instagram]
@@ -189,7 +189,7 @@ Rules, all of them enforced, none of them forgiving:
    exact casing.
 6. **`http://localhost` is a development-mode-only escape hatch.** Meta accepts loopback redirects
    while the app is in Development mode; when you flip to Live it stops working. Do not build your
-   only auth path on it — but it is genuinely useful for the first token, and it is why `postvox`
+   only auth path on it — but it is genuinely useful for the first token, and it is why `makervox_publish`
    ships a loopback listener:
 
    ```toml
@@ -324,17 +324,17 @@ post the Reel to the Page, read back its `source` URL, hand that to Instagram �
 container reaches `status_code: ERROR` in about **eight seconds**, with no useful message on the
 `status_code` field alone. Don't spend an evening on it; it is a closed door.
 
-### 6.1 Object storage (what `postvox` ships)
+### 6.1 Object storage (what `makervox_publish` ships)
 
 Stage the file, publish, delete:
 
 ```toml
 [platforms.instagram.staging]
-impl = "postvox.platforms.meta.staging.gcs:GcsStager"
+impl = "makervox_publish.platforms.meta.staging.gcs:GcsStager"
 
 [platforms.instagram.staging.options]
 bucket = "example-media-staging"   # REQUIRED. There is no default.
-prefix = "postvox-temp"
+prefix = "makervox_publish-temp"
 public_mode = "object_acl"         # object_acl | signed_url
 chunk_bytes = 8388608              # 8 MiB — must be a multiple of 256 KiB
 upload_timeout_s = 300             # PER CHUNK, not per file
@@ -359,7 +359,7 @@ disables per-object ACLs entirely. The "make just this one object public" trick 
   — Meta's fetcher does not care about query parameters — but note that anything sniffing your
   media type from the URL must strip the query string first, which the publisher does.
 
-`postvox` detects this precondition and raises a named `StagingPreconditionError` explaining it,
+`makervox_publish` detects this precondition and raises a named `StagingPreconditionError` explaining it,
 rather than surfacing a raw 403 you have to decode.
 
 ### 6.3 🔑 The single-shot upload timeout that ate three posts
@@ -487,7 +487,7 @@ offset in **milliseconds** as `thumb_offset` on the REELS container.
 ```toml
 [media.cover]
 enabled = true
-impl = "postvox.media.cover:BrightnessScanCoverPicker"
+impl = "makervox_publish.media.cover:BrightnessScanCoverPicker"
 
 [media.cover.options]
 scan_until_s = 6.0
@@ -623,14 +623,14 @@ Do not spend a weekend trying to route around these. They are deliberate.
 
 ## 12. Copy-pasteable config
 
-`postvox.toml` — **every value below is a fake placeholder.** The file holds secret *names*, never
+`makervox-publish.toml` — **every value below is a fake placeholder.** The file holds secret *names*, never
 secret *values*.
 
 ```toml
 version = 1
 
 [state]
-dir = "~/.local/state/postvox"
+dir = "~/.local/state/makervox_publish"
 file_mode = 0o600
 
 # ── the account ──────────────────────────────────────────────────────────────
@@ -671,14 +671,14 @@ store = "meta_tokens"                    # SAME store as facebook — one file, 
 refresh_after_s = 4320000                # 50d; Path B tokens live 60d
 
 [platforms.instagram.staging]
-impl = "postvox.platforms.meta.staging.gcs:GcsStager"
+impl = "makervox_publish.platforms.meta.staging.gcs:GcsStager"
 
 [platforms.instagram.staging.options]
 bucket = "example-media-staging"         # REQUIRED. No default. Must allow per-object ACLs
                                          # (uniform bucket-level access DISABLED) unless you
                                          # use public_mode = "signed_url".
 project = "example-project-123"          # omit to infer from application default credentials
-prefix = "postvox-temp"
+prefix = "makervox_publish-temp"
 public_mode = "object_acl"               # object_acl | signed_url
 chunk_bytes = 8388608                    # 8 MiB — resumable upload; timeout becomes PER CHUNK
 upload_timeout_s = 300
@@ -692,7 +692,7 @@ send_thumb_offset = true
 # ── cover picker (shared with the Facebook publisher) ────────────────────────
 [media.cover]
 enabled = true
-impl = "postvox.media.cover:BrightnessScanCoverPicker"
+impl = "makervox_publish.media.cover:BrightnessScanCoverPicker"
 
 [media.cover.options]
 scan_until_s = 6.0
@@ -709,10 +709,10 @@ retry_on = ["transport"]                 # never retry an API rejection
 
 # ── token store ──────────────────────────────────────────────────────────────
 [token_stores.meta_tokens]
-impl = "postvox.state.token_store:FileTokenStore"
+impl = "makervox_publish.state.token_store:FileTokenStore"
 
 [token_stores.meta_tokens.options]
-path = "~/.local/state/postvox/meta_tokens.json"
+path = "~/.local/state/makervox_publish/meta_tokens.json"
 atomic_write = true
 lock = "meta-tokens"
 ```
@@ -755,12 +755,12 @@ curl -s "https://graph.facebook.com/v21.0/$IG/content_publishing_limit\
 
 # 5. Is my staged URL actually public? Must be 200 with Content-Type: video/mp4,
 #    from a machine that is NOT logged in to your cloud provider.
-curl -sI "https://storage.googleapis.com/example-media-staging/postvox-temp/clip.mp4"
+curl -sI "https://storage.googleapis.com/example-media-staging/makervox_publish-temp/clip.mp4"
 
 # 6. Create a container. (proves instagram_content_publish)
 curl -s -X POST "https://graph.facebook.com/v21.0/$IG/media" \
   -d "media_type=REELS" \
-  -d "video_url=https://storage.googleapis.com/example-media-staging/postvox-temp/clip.mp4" \
+  -d "video_url=https://storage.googleapis.com/example-media-staging/makervox_publish-temp/clip.mp4" \
   -d "caption=test" -d "thumb_offset=750" -d "access_token=$PAGE_TOKEN"
 
 # 7. Poll BOTH fields until FINISHED. `status` is where the real error text lives.

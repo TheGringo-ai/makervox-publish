@@ -13,10 +13,10 @@ import time
 
 import pytest
 
-from postvox import Config
-from postvox.errors import ReauthorizationRequired
-from postvox.http import HttpClient, HttpPolicy
-from postvox.platforms.tiktok import TikTokClient
+from makervox_publish import Config
+from makervox_publish.errors import ReauthorizationRequired
+from makervox_publish.http import HttpClient, HttpPolicy
+from makervox_publish.platforms.tiktok import TikTokClient
 
 
 class FakeResponse:
@@ -59,7 +59,7 @@ def build(tmp_path, monkeypatch, responses, metrics=None):
         "accounts": {"moonlit": {"platforms": ["tiktok"]}},
         "platforms": {"tiktok": tiktok},
         "token_stores": {"tiktok_tokens": {
-            "impl": "postvox.state.token_store:FileTokenStore",
+            "impl": "makervox_publish.state.token_store:FileTokenStore",
             "options": {"path": str(tmp_path / "state" / "tiktok_tokens.json")},
         }},
     })

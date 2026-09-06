@@ -1,6 +1,6 @@
 # Setting up the Meta developer app (Facebook Pages + Instagram)
 
-**Scope of this document.** Everything you have to do in Meta's consoles *before* `postvox` can
+**Scope of this document.** Everything you have to do in Meta's consoles *before* `makervox_publish` can
 post a single reel — app creation, the use-case/permission model, minting a non-expiring Page
 token, and linking Instagram. Then every failure mode this integration has actually produced in
 production, stated as **symptom → cause → fix**, because on Meta the symptom almost never
@@ -103,7 +103,7 @@ verification. That is the whole reason self-hosting on your own Pages is viable.
 
 ### 1.4 Redirect URIs — and why you may not need one
 
-`postvox`'s Meta setup mints its user token in the **Graph API Explorer**, so for the flow in
+`makervox_publish`'s Meta setup mints its user token in the **Graph API Explorer**, so for the flow in
 Part 2 **you never register a redirect URI at all**. That is worth knowing before you spend an
 afternoon on OAuth plumbing you don't need.
 
@@ -155,7 +155,7 @@ short-lived USER token (~1–2 h, from the Explorer)
 
 ### 2.2 Exchange and harvest
 
-`postvox` does both calls for you (the `connect` step: exchange, then pull every Page token and
+`makervox_publish` does both calls for you (the `connect` step: exchange, then pull every Page token and
 store them). Doing it by hand:
 
 ```sh
@@ -261,7 +261,7 @@ implied by `pages_manage_posts`. Most permission-set guides omit it.
 
 **Fix.** Add `pages_manage_engagement` (§1.3), re-mint (§2.4). Then verify the comment path
 separately from the post path — a publisher that treats the comment as best-effort will never
-tell you it is broken. In `postvox` the comment failure is logged at WARNING with its reason;
+tell you it is broken. In `makervox_publish` the comment failure is logged at WARNING with its reason;
 a swallowed exception here is what hid this for months.
 
 ### 3.4 🔑 `(#100) Unsupported post request … Object … does not exist` when commenting on a reel
@@ -464,7 +464,7 @@ finish in time.
 buckets have it **enabled by default**.
 
 **Fix.** Either use a bucket with uniform access off, or switch the stager to
-`public_mode = "signed_url"`. `postvox` detects this and raises a named
+`public_mode = "signed_url"`. `makervox_publish` detects this and raises a named
 `StagingPreconditionError` rather than surfacing a raw 403 you would have to reverse-engineer.
 
 ### 4.7 Black covers on Instagram — and the 45 you cannot fix
@@ -504,7 +504,7 @@ reboot and the gaps become structurally invisible.
 **Fix.** Persist every platform outcome to a durable ledger and alert on failure. Then audit:
 
 ```sh
-jq 'select(.results|to_entries|any(.value.ok==false))' ~/.local/state/postvox/delivered.jsonl
+jq 'select(.results|to_entries|any(.value.ok==false))' ~/.local/state/makervox_publish/delivered.jsonl
 ```
 
 Related: verify what your success flag actually asserts. "ok: true" that means "accepted for
@@ -572,7 +572,7 @@ multi-tenant product.
 - You may additionally be pushed through **Tech Provider verification** depending on how your
   product is classified.
 
-This is the reason `postvox` is bring-your-own-app: self-hosting keeps every one of these on the
+This is the reason `makervox_publish` is bring-your-own-app: self-hosting keeps every one of these on the
 operator's own Pages, where none of it is required.
 
 ### 6.2 Your Pages are spread across three Business portfolios
@@ -662,11 +662,11 @@ api_version = "v21.0"
 store = "meta_tokens"                # same store as facebook
 
 [platforms.instagram.staging]        # P4.4 — IG pulls by URL; it cannot fetch from FB's CDN
-impl = "postvox.platforms.meta.staging.gcs:GcsStager"
+impl = "makervox_publish.platforms.meta.staging.gcs:GcsStager"
 
 [platforms.instagram.staging.options]
 bucket               = "example-media-staging"   # REQUIRED, no default
-prefix               = "postvox-temp"
+prefix               = "makervox_publish-temp"
 public_mode          = "object_acl"  # P4.6 — needs uniform bucket-level access OFF
 chunk_bytes          = 8388608       # P4.5 — forces resumable; timeout is PER CHUNK
 upload_timeout_s     = 300
@@ -679,10 +679,10 @@ send_thumb_offset = true             # P4.7 — or the grid is black tiles
 
 # ------------------------------------------------------------ token store
 [token_stores.meta_tokens]
-impl = "postvox.state.token_store:FileTokenStore"
+impl = "makervox_publish.state.token_store:FileTokenStore"
 
 [token_stores.meta_tokens.options]
-path         = "~/.local/state/postvox/meta_tokens.json"   # chmod 0600
+path         = "~/.local/state/makervox_publish/meta_tokens.json"   # chmod 0600
 atomic_write = true
 lock         = "meta-tokens"
 ```
