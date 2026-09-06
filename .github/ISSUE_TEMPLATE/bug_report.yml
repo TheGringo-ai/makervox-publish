@@ -1,0 +1,31 @@
+name: Bug report
+description: Something behaved differently than documented
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing: [docs/platform-limits.md](../blob/main/docs/platform-limits.md)
+        lists vendor restrictions that no amount of code will fix.
+  - type: input
+    id: platform
+    attributes:
+      label: Platform
+      placeholder: tiktok / facebook / instagram / x / none
+    validations: { required: true }
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: Include the exact error string if there is one — the wording matters.
+    validations: { required: true }
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations: { required: true }
+  - type: input
+    id: version
+    attributes:
+      label: postvox version and Python version
+    validations: { required: true }

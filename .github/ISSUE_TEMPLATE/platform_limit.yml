@@ -1,0 +1,19 @@
+name: Platform limit correction
+description: A documented vendor limit is wrong or out of date
+labels: ["docs", "platform-limits"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Platform tiers change often. Corrections are very welcome.
+  - type: textarea
+    id: claim
+    attributes:
+      label: What the docs currently say
+    validations: { required: true }
+  - type: textarea
+    id: reality
+    attributes:
+      label: What is actually true now
+      description: Please cite the error string you saw or link the vendor docs page.
+    validations: { required: true }

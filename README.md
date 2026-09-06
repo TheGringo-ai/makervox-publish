@@ -1,5 +1,40 @@
 # postvox
 
+**Post to TikTok, Facebook, Instagram and X from Python — with your own developer apps.**
+
+[![CI](https://github.com/TheGringo-ai/postvox/actions/workflows/ci.yml/badge.svg)](https://github.com/TheGringo-ai/postvox/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
+[![Dependencies: 1](https://img.shields.io/badge/dependencies-requests-brightgreen.svg)](pyproject.toml)
+
+Writing the API calls is the easy part. Getting them to keep working is not —
+and this library's real content is the accumulated knowledge of what breaks:
+
+> TikTok's chunk count must use `floor`, not `ceil`, or files over 64MB fail
+> with `invalid chunk count`. Scopes are frozen at authorization, so adding one
+> does nothing until the account is re-authorized — refreshing will not do it,
+> and the error does not tell you that. A Facebook first comment posted too
+> fast fails because the story object does not exist yet. Refresh tokens rotate
+> on use, so two processes refreshing the same account destroys one of them,
+> and recovery is a manual browser re-auth.
+
+Each of those cost somebody a real outage. They are collected in
+**[docs/scar-tissue.md](docs/scar-tissue.md)** (why the defaults look paranoid)
+and **[docs/platform-limits.md](docs/platform-limits.md)** (what no amount of
+code will fix).
+
+| Platform | Post | Media | Notes |
+|---|---|---|---|
+| TikTok | ✅ | video | chunked upload, inbox + direct post, insights |
+| Facebook | ✅ | video, photo | reels, first comment retry |
+| Instagram | ✅ | video, photo | reels, cover-frame selection |
+| X | ✅ | text, image | daily governor, deny-by-default allow-lists |
+
+Missing a platform you have been approved for? That is the single most useful
+contribution — see [CONTRIBUTING.md](CONTRIBUTING.md).
+
+---
+
 **You bring your own developer apps.** postvox publishes to TikTok, Facebook,
 Instagram and X using *your* TikTok app, *your* Meta app and *your* X app.
 There is no shared application, no hosted OAuth broker, no account system and
@@ -96,6 +131,14 @@ config / credentials / state / media / text / identity / http
 cover offset, so `cover_offset_ms()` lives a layer below both of them and
 neither owns it. Putting it inside one publisher is what produced the circular
 import in the code this package was extracted from.
+
+## Contributing
+
+The most valuable contributions are corrections to
+[docs/platform-limits.md](docs/platform-limits.md) — platform tiers and error
+strings change constantly and that file decays without help — and setup
+write-ups for platforms you have personally got through review. See
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
