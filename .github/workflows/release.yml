@@ -1,6 +1,6 @@
 name: Release to PyPI
 
-# Publishes on a GitHub Release, or manually via workflow_dispatch.
+# Builds and verifies a release artifact. Publishing is not enabled yet.
 #
 # Uses PyPI Trusted Publishing (OIDC). There is NO API token stored in this
 # repository and none on the maintainer's machine — GitHub proves the workflow's
@@ -15,9 +15,16 @@ name: Release to PyPI
 #     Workflow          : release.yml
 #     Environment       : pypi
 
+# DORMANT. Manual trigger only: PyPI Trusted Publishing is not configured, so
+# this cannot publish yet, and firing it automatically on a GitHub Release would
+# turn every release red. The build/verify jobs below still work and are worth
+# keeping — they check the ARTIFACT, which CI does not.
+#
+# To turn it on later: add a pending publisher on pypi.org (Your projects ->
+# Publishing) with project makervox-publish, owner TheGringo-ai, repository
+# makervox-publish, workflow release.yml, environment pypi. Then restore the
+# `release: types: [published]` trigger.
 on:
-  release:
-    types: [published]
   workflow_dispatch:
 
 jobs:

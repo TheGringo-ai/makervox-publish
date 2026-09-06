@@ -61,10 +61,18 @@ if missing:
 ## Install
 
 ```sh
-pip install makervox-publish                 # library + CLI
-pip install "makervox-publish[toml]"         # TOML config on Python 3.9 / 3.10
-pip install "makervox-publish[gcp,keyring]"  # optional credential + staging backends
+GH=git+https://github.com/TheGringo-ai/makervox-publish
+
+# library + CLI
+pip install $GH
+# TOML config on Python 3.9 / 3.10
+pip install "makervox-publish[toml] @ $GH"
+# optional credential + staging backends
+pip install "makervox-publish[gcp,keyring] @ $GH"
 ```
+
+Installed straight from the repository — this is not on PyPI. Pin a tag or a
+commit if you want reproducible installs; `main` is what gets tested by CI.
 
 Python 3.9 or newer. `ffmpeg`/`ffprobe` are optional: without them, cover-frame
 selection, duration probing, short cuts and pre-upload transcodes are disabled
