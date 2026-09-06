@@ -33,7 +33,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: pip install ruff
+      # PINNED. An unpinned linter means CI can fail on a day the code did not
+      # change, because a new ruff release added rules. Bump this deliberately.
+      - run: pip install ruff==0.15.14
       - run: ruff check .
 
   offline:

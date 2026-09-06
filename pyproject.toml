@@ -108,6 +108,31 @@ filterwarnings = ["error"]
 line-length = 100
 target-version = "py39"
 
+# An implicit rule set is not reproducible: with no `select`, a newer ruff
+# enables rules this code has never been checked against, and CI turns red on a
+# day nobody changed anything. It did — 1226 findings on the first public push,
+# against a local run that passed clean. Name the rules, and pin the version in
+# CI to match.
+[tool.ruff.lint]
+# This is ruff's own default set, stated explicitly. Naming it is the point:
+# the previous config selected nothing, so the rule set was whatever the
+# installed ruff happened to default to that week.
+#
+# Deliberately NOT adding UP/B/C4/SIM yet. They produce ~1100 findings on this
+# code, and suppressing that many at once would make the lint meaningless.
+# Adopting one rule family at a time, actually fixing it, is the honest path.
+select = ["E4", "E7", "E9", "F"]
+ignore = [
+    "E501",  # long lines are a formatter concern, not a lint failure
+]
+
+[tool.ruff.lint.per-file-ignores]
+# __init__ re-exports the public API; unused-import IS the point.
+"src/postvox/__init__.py" = ["F401"]
+"src/postvox/*/__init__.py" = ["F401"]
+# Tests reach into internals and shadow names on purpose.
+"tests/*" = ["B011", "SIM117"]
+
 [tool.mypy]
 python_version = "3.9"
 warn_unused_ignores = true
