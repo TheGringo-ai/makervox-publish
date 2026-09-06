@@ -61,3 +61,31 @@ jobs:
           from makervox_publish.platforms.x import client as xc
           print("clean import:", makervox_publish.__version__)
           PY
+
+  boundary:
+    # This package is public; the deployment that produced it is not. This job
+    # fails the build if anything operator-specific gets committed — a home
+    # directory, an email address, a key-shaped string, a private key.
+    #
+    # The patterns here are deliberately GENERIC. A denylist naming the actual
+    # private projects would publish those names in the very file meant to keep
+    # them out; the specific list is kept outside this repository.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: No operator-specific data
+        run: |
+          set -o pipefail
+          PAT='/Users/[a-z]|/home/[a-z]|[a-zA-Z0-9._%+-]+@(gmail|googlemail|icloud|outlook|yahoo|hotmail)\.|AIza[0-9A-Za-z_-]{10,}|sk-[A-Za-z0-9]{15,}|ghp_[A-Za-z0-9]{15,}|hf_[A-Za-z0-9]{15,}|BEGIN [A-Z ]*PRIVATE KEY'
+          # every commit, not just HEAD: a public repo leaks anything it ever held
+          fail=0
+          for c in $(git rev-list --all); do
+            if git grep -InE "$PAT" "$c" -- . > /tmp/hits 2>/dev/null; then
+              echo "::error::operator-specific data in commit $c"
+              head -20 /tmp/hits
+              fail=1
+            fi
+          done
+          [ "$fail" = "0" ] && echo "clean: no home dirs, emails, keys or private keys in any commit"
+          exit $fail
